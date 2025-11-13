@@ -6,17 +6,67 @@
  */
 
 const express = require('express');
-const { protect, requireStaff } = require('../middleware');
-
+const { body } = require('express-validator');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
+const { requireAdmin, requireStaff } = require('../middleware/rbac');
+const { validate } = require('../middleware/validate');
+const attendanceController = require('../controllers/attendanceController');
 
+/**
+ * All routes require authentication
+ */
 router.use(protect);
 
-// Placeholder routes - implement as needed
-router.get('/', (req, res) => res.json({ message: 'Get attendance records' }));
-router.get('/student/:studentId', (req, res) => res.json({ message: 'Get student attendance' }));
-router.post('/', requireStaff, (req, res) => res.json({ message: 'Mark attendance' }));
-router.put('/:id', requireStaff, (req, res) => res.json({ message: 'Update attendance' }));
-router.get('/summary', (req, res) => res.json({ message: 'Get attendance summary' }));
+// Validation rules
+const markAttendanceValidation = [
+  body('studentId')
+    .notEmpty()
+    .withMessage('Student ID is required')
+    .isMongoId()
+    .withMessage('Invalid student ID'),
+  body('subjectId')
+    .notEmpty()
+    .withMessage('Subject ID is required')
+    .isMongoId()
+    .withMessage('Invalid subject ID'),
+  body('date')
+    .notEmpty()
+    .withMessage('Date is required')
+    .isISO8601()
+    .withMessage('Invalid date format'),
+  body('status')
+    .notEmpty()
+    .withMessage('Status is required')
+    .isIn(['present', 'absent', 'late', 'excused'])
+    .withMessage('Invalid status'),
+  body('remarks')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Remarks must not exceed 500 characters'),
+];
+
+const updateAttendanceValidation = [
+  body('status')
+    .optional()
+    .isIn(['present', 'absent', 'late', 'excused'])
+    .withMessage('Invalid status'),
+  body('remarks')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Remarks must not exceed 500 characters'),
+];
+
+// Routes
+router.get('/range', attendanceController.getAttendanceByDateRange);
+router.get('/student/:studentId/summary', attendanceController.getAttendanceSummary);
+router.get('/student/:studentId', attendanceController.getStudentAttendance);
+router.get('/subject/:subjectId/today', attendanceController.getTodayAttendance);
+router.get('/subject/:subjectId', attendanceController.getSubjectAttendance);
+router.post('/', requireStaff, markAttendanceValidation, validate, attendanceController.markAttendance);
+router.put('/:id', requireStaff, updateAttendanceValidation, validate, attendanceController.updateAttendance);
+router.delete('/:id', requireAdmin, attendanceController.deleteAttendance);
 
 module.exports = router;
