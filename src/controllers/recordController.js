@@ -180,5 +180,5 @@ exports.getRecordStats = asyncHandler(async (req, res) => {
 
   const stats = await recordService.getRecordStats(filters);
 
-  res.json(ApiResponse.success(stats, 'Record statistics retrieved successfully'));
+  ApiResponse.success(res, stats, 'Record statistics retrieved successfully');
 });
