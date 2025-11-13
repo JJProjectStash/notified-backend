@@ -83,7 +83,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes (v1)
+// API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/students', studentRoutes);
@@ -91,15 +91,6 @@ app.use('/api/v1/subjects', subjectRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/records', recordRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
-
-// Compatibility Routes (without version) - for frontend sync
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/students', studentRoutes);
-app.use('/api/subjects', subjectRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/records', recordRoutes);
-app.use('/api/notifications', notificationRoutes);
 
 // Root Route
 app.get('/', (req, res) => {
