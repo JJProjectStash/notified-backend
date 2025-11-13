@@ -1,7 +1,7 @@
 /**
  * Email Utility
  * Functions for sending emails using Nodemailer
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -11,7 +11,7 @@ const logger = require('./logger');
 
 class EmailUtil {
   constructor() {
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
       port: process.env.EMAIL_PORT,
       secure: false, // true for 465, false for other ports

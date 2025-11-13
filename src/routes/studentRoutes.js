@@ -1,6 +1,6 @@
 /**
  * Student Routes
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -11,6 +11,17 @@ const studentController = require('../controllers/studentController');
 const { protect, requireStaff, requireAdmin, validate } = require('../middleware');
 
 const router = express.Router();
+
+// Import controller functions
+const {
+  getAllStudents,
+  getStudentById,
+  getStudentByNumber,
+  createStudent,
+  updateStudent,
+  deleteStudent,
+  generateStudentNumber,
+} = studentController;
 
 // All routes require authentication
 router.use(protect);
@@ -34,16 +45,5 @@ router.get('/:id', getStudentById);
 router.post('/', requireStaff, studentValidation, validate, createStudent);
 router.put('/:id', requireStaff, updateStudent);
 router.delete('/:id', requireAdmin, deleteStudent);
-
-// Import controller functions
-const {
-  getAllStudents,
-  getStudentById,
-  getStudentByNumber,
-  createStudent,
-  updateStudent,
-  deleteStudent,
-  generateStudentNumber,
-} = studentController;
 
 module.exports = router;

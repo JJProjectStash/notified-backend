@@ -2,7 +2,7 @@
  * Subject Model
  * Mongoose schema for subject management
  * Based on the JavaFX SubjectEntry model
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -14,10 +14,12 @@ const subjectSchema = new mongoose.Schema(
     subjectCode: {
       type: String,
       required: [true, 'Subject code is required'],
-      unique: true,
       uppercase: true,
       trim: true,
-      match: [/^[A-Z0-9-]+$/, 'Subject code can only contain uppercase letters, numbers, and hyphens'],
+      match: [
+        /^[A-Z0-9-]+$/,
+        'Subject code can only contain uppercase letters, numbers, and hyphens',
+      ],
     },
     subjectName: {
       type: String,
@@ -59,7 +61,7 @@ const subjectSchema = new mongoose.Schema(
 );
 
 // Indexes for faster queries
-subjectSchema.index({ subjectCode: 1 });
+subjectSchema.index({ subjectCode: 1 }, { unique: true });
 subjectSchema.index({ yearLevel: 1 });
 subjectSchema.index({ section: 1 });
 

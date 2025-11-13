@@ -2,7 +2,7 @@
  * Student Model
  * Mongoose schema for student management
  * Based on the JavaFX StudentEntry model
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -14,7 +14,6 @@ const studentSchema = new mongoose.Schema(
     studentNumber: {
       type: String,
       required: [true, 'Student number is required'],
-      unique: true,
       trim: true,
       match: [/^\d{2}-\d{4}$/, 'Student number must be in format YY-NNNN (e.g., 25-0001)'],
     },
@@ -79,7 +78,7 @@ const studentSchema = new mongoose.Schema(
 );
 
 // Indexes for faster queries
-studentSchema.index({ studentNumber: 1 });
+studentSchema.index({ studentNumber: 1 }, { unique: true });
 studentSchema.index({ email: 1 });
 studentSchema.index({ section: 1 });
 studentSchema.index({ firstName: 1, lastName: 1 });
