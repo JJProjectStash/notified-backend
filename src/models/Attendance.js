@@ -1,0 +1,101 @@
+/**
+ * Attendance Model
+ * Mongoose schema for attendance tracking
+ * Based on the JavaFX attendance and records system
+ * 
+ * @author Notified Development Team
+ * @version 1.0.0
+ */
+
+const mongoose = require('mongoose');
+const { ATTENDANCE_STATUS } = require('../config/constants');
+
+const attendanceSchema = new mongoose.Schema(
+  {
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Student',
+      required: [true, 'Student is required'],
+    },
+    subject: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+    },
+    date: {
+      type: Date,
+      required: [true, 'Date is required'],
+      default: Date.now,
+    },
+    status: {
+      type: String,
+      enum: Object.values(ATTENDANCE_STATUS),
+      required: [true, 'Attendance status is required'],
+      default: ATTENDANCE_STATUS.PRESENT,
+    },
+    remarks: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Remarks cannot exceed 500 characters'],
+    },
+    markedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Marker user is required'],
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Compound indexes
+attendanceSchema.index({ student: 1, date: -1 });
+attendanceSchema.index({ subject: 1, date: -1 });
+attendanceSchema.index({ date: -1 });
+attendanceSchema.index({ status: 1 });
+
+// Prevent duplicate attendance for same student, subject, and date
+attendanceSchema.index(
+  { student: 1, subject: 1, date: 1 },
+  { 
+    unique: true,
+    partialFilterExpression: { subject: { $exists: true } }
+  }
+);
+
+// Static method to get attendance by date range
+attendanceSchema.statics.findByDateRange = function (startDate, endDate, filters = {}) {
+  return this.find({
+    date: { $gte: startDate, $lte: endDate },
+    ...filters,
+  })
+    .populate('student', 'studentNumber firstName lastName')
+    .populate('subject', 'subjectCode subjectName')
+    .sort({ date: -1 });
+};
+
+// Static method to get attendance summary
+attendanceSchema.statics.getAttendanceSummary = async function (filters = {}) {
+  return await this.aggregate([
+    { $match: filters },
+    {
+      $group: {
+        _id: '$status',
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+};
+
+// Static method to get student attendance history
+attendanceSchema.statics.getStudentHistory = function (studentId, limit = 10) {
+  return this.find({ student: studentId })
+    .populate('subject', 'subjectCode subjectName')
+    .populate('markedBy', 'name')
+    .sort({ date: -1 })
+    .limit(limit);
+};
+
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+module.exports = Attendance;
