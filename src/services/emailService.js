@@ -94,13 +94,8 @@ class EmailService {
       // Create activity record
       await Record.create({
         recordType: RECORD_TYPES.EMAIL_SENT,
-        description: `Email sent to ${to}: ${subject}`,
+        recordData: `Email sent to ${to}: ${subject}`,
         performedBy: userId,
-        metadata: {
-          recipient: to,
-          subject,
-          messageId: result.messageId,
-        },
       });
 
       logger.info(`Email sent to ${to} by user ${userId} (MessageID: ${result.messageId})`);
@@ -171,15 +166,8 @@ class EmailService {
       // Create activity record
       await Record.create({
         recordType: RECORD_TYPES.EMAIL_SENT,
-        description: `Bulk email sent: ${subject} (${successCount}/${recipients.length} successful)`,
+        recordData: `Bulk email sent: ${subject} (${successCount}/${recipients.length} successful)`,
         performedBy: userId,
-        metadata: {
-          sentCount: successCount,
-          failedCount: errors.length,
-          totalRecipients: recipients.length,
-          subject,
-          successRate: `${((successCount / recipients.length) * 100).toFixed(1)}%`,
-        },
       });
 
       logger.info(
