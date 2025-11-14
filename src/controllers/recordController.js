@@ -1,5 +1,5 @@
 const recordService = require('../services/recordService');
-const { ApiResponse } = require('../utils/apiResponse');
+const ApiResponse = require('../utils/apiResponse');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { SUCCESS_MESSAGES } = require('../config/constants');
 
@@ -25,7 +25,13 @@ exports.getAllRecords = asyncHandler(async (req, res) => {
   const result = await recordService.getAllRecords(filters, { page, limit });
 
   res.json(
-    ApiResponse.paginated(result.records, result.pagination, SUCCESS_MESSAGES.RECORDS_RETRIEVED)
+    ApiResponse.paginated(
+      result.records,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
+      SUCCESS_MESSAGES.RECORDS_RETRIEVED
+    )
   );
 });
 
@@ -51,7 +57,13 @@ exports.getRecordsByType = asyncHandler(async (req, res) => {
   const result = await recordService.getRecordsByType(recordType, { page, limit });
 
   res.json(
-    ApiResponse.paginated(result.records, result.pagination, SUCCESS_MESSAGES.RECORDS_RETRIEVED)
+    ApiResponse.paginated(
+      result.records,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
+      SUCCESS_MESSAGES.RECORDS_RETRIEVED
+    )
   );
 });
 
@@ -73,7 +85,13 @@ exports.getRecordsByDateRange = asyncHandler(async (req, res) => {
   });
 
   res.json(
-    ApiResponse.paginated(result.records, result.pagination, SUCCESS_MESSAGES.RECORDS_RETRIEVED)
+    ApiResponse.paginated(
+      result.records,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
+      SUCCESS_MESSAGES.RECORDS_RETRIEVED
+    )
   );
 });
 
@@ -134,7 +152,9 @@ exports.getTodayRecords = asyncHandler(async (req, res) => {
   res.json(
     ApiResponse.paginated(
       result.records,
-      result.pagination,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
       "Today's records retrieved successfully"
     )
   );

@@ -1,6 +1,6 @@
 /**
  * Subject Routes
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -8,9 +8,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { requireAdmin, requireStaff } = require('../middleware/rbac');
-const { validate } = require('../middleware/validate');
+const { protect, requireAdmin, requireStaff, validate } = require('../middleware');
 const subjectController = require('../controllers/subjectController');
 
 /**
@@ -83,13 +81,31 @@ const updateSubjectValidation = [
 
 // Routes
 router.get('/search', protect, subjectController.searchSubjects);
-router.get('/year/:yearLevel/section/:section', protect, subjectController.getSubjectsByYearAndSection);
+router.get(
+  '/year/:yearLevel/section/:section',
+  protect,
+  subjectController.getSubjectsByYearAndSection
+);
 router.get('/code/:subjectCode', protect, subjectController.getSubjectByCode);
 router.get('/:id/enrollments', protect, subjectController.getSubjectEnrollments);
 router.get('/:id', protect, subjectController.getSubjectById);
 router.get('/', protect, subjectController.getAllSubjects);
-router.post('/', protect, requireStaff, createSubjectValidation, validate, subjectController.createSubject);
-router.put('/:id', protect, requireStaff, updateSubjectValidation, validate, subjectController.updateSubject);
+router.post(
+  '/',
+  protect,
+  requireStaff,
+  createSubjectValidation,
+  validate,
+  subjectController.createSubject
+);
+router.put(
+  '/:id',
+  protect,
+  requireStaff,
+  updateSubjectValidation,
+  validate,
+  subjectController.updateSubject
+);
 router.delete('/:id', protect, requireAdmin, subjectController.deleteSubject);
 
 module.exports = router;

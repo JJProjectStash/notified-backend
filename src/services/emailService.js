@@ -13,17 +13,74 @@ const logger = require('../utils/logger');
 const ValidationUtil = require('../utils/validationUtil');
 
 class EmailService {
+  constructor() {
+    // Rate limiting: Track email sends per user
+    this.rateLimitMap = new Map();
+    this.RATE_LIMIT_WINDOW = 60000; // 1 minute
+    this.MAX_EMAILS_PER_MINUTE = 30; // Max 30 emails per minute per user
+  }
+
+  /**
+   * Check rate limit for user
+   * @private
+   */
+  _checkRateLimit(userId) {
+    const now = Date.now();
+    const userKey = userId.toString();
+
+    if (!this.rateLimitMap.has(userKey)) {
+      this.rateLimitMap.set(userKey, []);
+    }
+
+    const userSends = this.rateLimitMap.get(userKey);
+
+    // Remove old entries outside the time window
+    const recentSends = userSends.filter((timestamp) => now - timestamp < this.RATE_LIMIT_WINDOW);
+
+    if (recentSends.length >= this.MAX_EMAILS_PER_MINUTE) {
+      const oldestSend = Math.min(...recentSends);
+      const timeToWait = Math.ceil((this.RATE_LIMIT_WINDOW - (now - oldestSend)) / 1000);
+      throw new Error(
+        `Rate limit exceeded. Please wait ${timeToWait} seconds before sending more emails.`
+      );
+    }
+
+    // Add current send
+    recentSends.push(now);
+    this.rateLimitMap.set(userKey, recentSends);
+
+    // Clean up old entries periodically
+    if (Math.random() < 0.1) {
+      // 10% chance
+      this._cleanupRateLimitMap();
+    }
+  }
+
+  /**
+   * Clean up old rate limit entries
+   * @private
+   */
+  _cleanupRateLimitMap() {
+    const now = Date.now();
+    for (const [userId, sends] of this.rateLimitMap.entries()) {
+      const recentSends = sends.filter((timestamp) => now - timestamp < this.RATE_LIMIT_WINDOW);
+      if (recentSends.length === 0) {
+        this.rateLimitMap.delete(userId);
+      } else {
+        this.rateLimitMap.set(userId, recentSends);
+      }
+    }
+  }
+
   /**
    * Send single email
    */
   async sendSingleEmail(emailData) {
     try {
-      const { to, subject, message, userId } = emailData;
+      const { to, subject, message, attachments, userId } = emailData;
 
-      // Validate email
-      if (!ValidationUtil.isValidEmail(to)) {
-        throw new Error(ERROR_MESSAGES.INVALID_EMAIL);
-      }
+      // Check rate limit
+      this._checkRateLimit(userId);
 
       // Send email
       const result = await emailUtil.sendEmail({
@@ -31,6 +88,7 @@ class EmailService {
         subject,
         html: this.formatEmailContent(message),
         text: message,
+        attachments,
       });
 
       // Create activity record
@@ -41,19 +99,21 @@ class EmailService {
         metadata: {
           recipient: to,
           subject,
+          messageId: result.messageId,
         },
       });
 
-      logger.info(`Email sent to ${to} by user ${userId}`);
+      logger.info(`Email sent to ${to} by user ${userId} (MessageID: ${result.messageId})`);
 
       return {
         success: true,
         recipient: to,
         messageId: result.messageId,
+        timestamp: new Date().toISOString(),
       };
     } catch (error) {
       logger.error('Error in sendSingleEmail:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to send email');
     }
   }
 
@@ -62,63 +122,83 @@ class EmailService {
    */
   async sendBulkEmail(emailData) {
     try {
-      const { recipients, subject, message, userId } = emailData;
+      const { recipients, subject, message, attachments, userId } = emailData;
+
+      // Check rate limit (bulk sends count as multiple sends)
+      this._checkRateLimit(userId);
 
       const results = [];
       const errors = [];
+      let successCount = 0;
+
+      logger.info(`Starting bulk email send to ${recipients.length} recipients by user ${userId}`);
 
       // Send emails sequentially to avoid overwhelming the SMTP server
-      for (const recipient of recipients) {
+      for (let i = 0; i < recipients.length; i++) {
+        const recipient = recipients[i];
         try {
-          // Validate email
-          if (!ValidationUtil.isValidEmail(recipient)) {
-            errors.push({ recipient, error: 'Invalid email format' });
-            continue;
-          }
-
-          await emailUtil.sendEmail({
+          const result = await emailUtil.sendEmail({
             to: recipient,
             subject,
             html: this.formatEmailContent(message),
             text: message,
+            attachments,
           });
 
-          results.push({ recipient, status: 'sent' });
+          results.push({
+            recipient,
+            status: 'sent',
+            messageId: result.messageId,
+          });
+          successCount++;
 
-          // Small delay to prevent rate limiting
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          logger.debug(`Bulk email ${i + 1}/${recipients.length} sent to ${recipient}`);
+
+          // Small delay to prevent rate limiting (100ms between emails)
+          if (i < recipients.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
         } catch (error) {
-          errors.push({ recipient, error: error.message });
-          logger.error(`Failed to send email to ${recipient}:`, error);
+          errors.push({
+            recipient,
+            error: error.message || 'Unknown error',
+            timestamp: new Date().toISOString(),
+          });
+          logger.error(`Failed to send bulk email to ${recipient}:`, error);
         }
       }
 
       // Create activity record
       await Record.create({
         recordType: RECORD_TYPES.EMAIL_SENT,
-        description: `Bulk email sent to ${results.length} recipients: ${subject}`,
+        description: `Bulk email sent: ${subject} (${successCount}/${recipients.length} successful)`,
         performedBy: userId,
         metadata: {
-          sentCount: results.length,
+          sentCount: successCount,
           failedCount: errors.length,
+          totalRecipients: recipients.length,
           subject,
+          successRate: `${((successCount / recipients.length) * 100).toFixed(1)}%`,
         },
       });
 
       logger.info(
-        `Bulk email sent to ${results.length}/${recipients.length} recipients by user ${userId}`
+        `Bulk email completed: ${successCount}/${recipients.length} sent successfully by user ${userId}`
       );
 
       return {
         success: true,
-        sentCount: results.length,
+        sentCount: successCount,
         failedCount: errors.length,
+        totalRecipients: recipients.length,
+        successRate: ((successCount / recipients.length) * 100).toFixed(1),
         results,
         errors: errors.length > 0 ? errors : undefined,
+        timestamp: new Date().toISOString(),
       };
     } catch (error) {
       logger.error('Error in sendBulkEmail:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to send bulk emails');
     }
   }
 
@@ -128,6 +208,9 @@ class EmailService {
   async sendGuardianEmail(emailData) {
     try {
       const { studentId, guardianEmail, subject, message, userId } = emailData;
+
+      // Check rate limit
+      this._checkRateLimit(userId);
 
       // Get student data
       const student = await Student.findById(studentId);
@@ -139,41 +222,56 @@ class EmailService {
       const recipientEmail = guardianEmail || student.guardianEmail;
 
       if (!recipientEmail) {
-        throw new Error('Guardian email not found for this student');
-      }
-
-      // Validate email
-      if (!ValidationUtil.isValidEmail(recipientEmail)) {
-        throw new Error(ERROR_MESSAGES.INVALID_EMAIL);
+        throw new Error(`Guardian email not found for student ${student.studentNumber}`);
       }
 
       // Format message with student context
       const contextualMessage = `
-        <p>Dear ${student.guardianName || 'Guardian'},</p>
-        <p>Regarding: <strong>${student.firstName} ${student.lastName}</strong> (${student.studentNumber})</p>
-        <hr>
-        ${this.formatEmailContent(message)}
-        <hr>
-        <p>If you have any questions, please contact the school administration.</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <p>Dear ${student.guardianName || 'Guardian'},</p>
+          <div style="background-color: #f5f5f5; padding: 15px; border-left: 4px solid #4A90E2; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Regarding:</strong> ${student.firstName} ${student.lastName}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Student Number:</strong> ${student.studentNumber}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Section:</strong> ${student.section || 'N/A'}</p>
+          </div>
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 25px 0;">
+          ${this.formatEmailContent(message)}
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 25px 0;">
+          <p style="color: #666; font-size: 14px;">
+            If you have any questions or concerns, please contact the school administration.
+          </p>
+          <p style="color: #666; font-size: 12px; margin-top: 30px;">
+            <strong>Notified School Management System</strong><br>
+            This is an automated message. Please do not reply to this email.
+          </p>
+        </div>
       `;
 
       // Send email
       const result = await emailUtil.sendEmail({
         to: recipientEmail,
-        subject,
+        subject: `[Notified] ${subject}`,
         html: contextualMessage,
-        text: message,
+        text: `Regarding: ${student.firstName} ${student.lastName} (${student.studentNumber})\n\n${message}`,
       });
 
-      // Create activity record
+      // Create activity record linked to student
       await Record.createStudentRecord(
         studentId,
         RECORD_TYPES.EMAIL_SENT,
         `Email sent to guardian (${recipientEmail}): ${subject}`,
-        userId
+        userId,
+        {
+          recipient: recipientEmail,
+          guardianName: student.guardianName,
+          subject,
+          messageId: result.messageId,
+        }
       );
 
-      logger.info(`Guardian email sent for student ${student.studentNumber}`);
+      logger.info(
+        `Guardian email sent for student ${student.studentNumber} to ${recipientEmail} (MessageID: ${result.messageId})`
+      );
 
       return {
         success: true,
@@ -182,12 +280,14 @@ class EmailService {
           id: student._id,
           name: `${student.firstName} ${student.lastName}`,
           studentNumber: student.studentNumber,
+          guardianName: student.guardianName,
         },
         messageId: result.messageId,
+        timestamp: new Date().toISOString(),
       };
     } catch (error) {
       logger.error('Error in sendGuardianEmail:', error);
-      throw error;
+      throw new Error(error.message || 'Failed to send guardian email');
     }
   }
 

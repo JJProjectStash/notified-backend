@@ -1,6 +1,6 @@
 /**
  * User Routes (Admin Management)
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -8,9 +8,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/rbac');
-const { validate } = require('../middleware/validate');
+const { protect, requireAdmin, validate } = require('../middleware');
 const userController = require('../controllers/userController');
 
 /**
@@ -41,10 +39,7 @@ const createUserValidation = [
     .withMessage('Password must be at least 8 characters long')
     .matches(/^(?=.*[A-Za-z])(?=.*\d)/)
     .withMessage('Password must contain at least one letter and one number'),
-  body('role')
-    .optional()
-    .isIn(['superadmin', 'admin', 'staff'])
-    .withMessage('Invalid role'),
+  body('role').optional().isIn(['superadmin', 'admin', 'staff']).withMessage('Invalid role'),
 ];
 
 const updateUserValidation = [
@@ -59,14 +54,8 @@ const updateUserValidation = [
     .isEmail()
     .withMessage('Please provide a valid email')
     .normalizeEmail(),
-  body('role')
-    .optional()
-    .isIn(['superadmin', 'admin', 'staff'])
-    .withMessage('Invalid role'),
-  body('isActive')
-    .optional()
-    .isBoolean()
-    .withMessage('isActive must be a boolean'),
+  body('role').optional().isIn(['superadmin', 'admin', 'staff']).withMessage('Invalid role'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
 ];
 
 // Routes (order matters - specific routes before parameterized ones)

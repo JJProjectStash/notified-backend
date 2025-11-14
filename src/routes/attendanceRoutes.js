@@ -1,6 +1,6 @@
 /**
  * Attendance Routes
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -8,9 +8,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { requireAdmin, requireStaff } = require('../middleware/rbac');
-const { validate } = require('../middleware/validate');
+const { protect, requireAdmin, requireStaff, validate } = require('../middleware');
 const attendanceController = require('../controllers/attendanceController');
 
 /**
@@ -65,8 +63,20 @@ router.get('/student/:studentId/summary', attendanceController.getAttendanceSumm
 router.get('/student/:studentId', attendanceController.getStudentAttendance);
 router.get('/subject/:subjectId/today', attendanceController.getTodayAttendance);
 router.get('/subject/:subjectId', attendanceController.getSubjectAttendance);
-router.post('/', requireStaff, markAttendanceValidation, validate, attendanceController.markAttendance);
-router.put('/:id', requireStaff, updateAttendanceValidation, validate, attendanceController.updateAttendance);
+router.post(
+  '/',
+  requireStaff,
+  markAttendanceValidation,
+  validate,
+  attendanceController.markAttendance
+);
+router.put(
+  '/:id',
+  requireStaff,
+  updateAttendanceValidation,
+  validate,
+  attendanceController.updateAttendance
+);
 router.delete('/:id', requireAdmin, attendanceController.deleteAttendance);
 
 module.exports = router;

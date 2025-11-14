@@ -1,7 +1,7 @@
 /**
  * Validation Utility
  * Common validation functions
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -71,6 +71,16 @@ class ValidationUtil {
    */
   static isValidName(name) {
     return VALIDATION.NAME_PATTERN.test(name);
+  }
+
+  /**
+   * Validate MongoDB ObjectId format
+   * @param {String} id - ID to validate
+   * @returns {Boolean} True if valid ObjectId format
+   */
+  static isValidObjectId(id) {
+    if (!id || typeof id !== 'string') return false;
+    return /^[0-9a-fA-F]{24}$/.test(id);
   }
 
   /**

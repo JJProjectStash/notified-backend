@@ -1,7 +1,7 @@
 /**
  * Role-Based Access Control Middleware
  * Restricts access based on user roles
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -20,6 +20,11 @@ const restrictTo = (...roles) => {
     // Check if user is authenticated
     if (!req.user) {
       return ApiResponse.unauthorized(res, ERROR_MESSAGES.UNAUTHORIZED);
+    }
+
+    // Superadmin has access to everything
+    if (req.user.role === ROLES.SUPERADMIN) {
+      return next();
     }
 
     // Check if user's role is in allowed roles
