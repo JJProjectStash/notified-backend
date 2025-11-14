@@ -162,7 +162,7 @@ class SubjectService {
       // Create activity record
       await Record.createSubjectRecord(
         subject._id,
-        RECORD_TYPES.SUBJECT_CREATED,
+        RECORD_TYPES.SUBJECT_ADDED,
         `Subject ${subject.subjectCode} - ${subject.subjectName} created`,
         userId
       );
