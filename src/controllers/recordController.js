@@ -25,11 +25,7 @@ exports.getAllRecords = asyncHandler(async (req, res) => {
   const result = await recordService.getAllRecords(filters, { page, limit });
 
   res.json(
-    ApiResponse.paginated(
-      result.records,
-      result.pagination,
-      SUCCESS_MESSAGES.RECORDS_RETRIEVED
-    )
+    ApiResponse.paginated(result.records, result.pagination, SUCCESS_MESSAGES.RECORDS_RETRIEVED)
   );
 });
 
@@ -55,11 +51,7 @@ exports.getRecordsByType = asyncHandler(async (req, res) => {
   const result = await recordService.getRecordsByType(recordType, { page, limit });
 
   res.json(
-    ApiResponse.paginated(
-      result.records,
-      result.pagination,
-      SUCCESS_MESSAGES.RECORDS_RETRIEVED
-    )
+    ApiResponse.paginated(result.records, result.pagination, SUCCESS_MESSAGES.RECORDS_RETRIEVED)
   );
 });
 
@@ -72,9 +64,7 @@ exports.getRecordsByDateRange = asyncHandler(async (req, res) => {
   const { startDate, endDate, page, limit } = req.query;
 
   if (!startDate || !endDate) {
-    return res.status(400).json(
-      ApiResponse.error('Start date and end date are required')
-    );
+    return res.status(400).json(ApiResponse.error('Start date and end date are required'));
   }
 
   const result = await recordService.getRecordsByDateRange(startDate, endDate, {
@@ -83,11 +73,7 @@ exports.getRecordsByDateRange = asyncHandler(async (req, res) => {
   });
 
   res.json(
-    ApiResponse.paginated(
-      result.records,
-      result.pagination,
-      SUCCESS_MESSAGES.RECORDS_RETRIEVED
-    )
+    ApiResponse.paginated(result.records, result.pagination, SUCCESS_MESSAGES.RECORDS_RETRIEVED)
   );
 });
 
@@ -180,5 +166,5 @@ exports.getRecordStats = asyncHandler(async (req, res) => {
 
   const stats = await recordService.getRecordStats(filters);
 
-  ApiResponse.success(res, stats, 'Record statistics retrieved successfully');
+  res.json(ApiResponse.success(stats, 'Record statistics retrieved successfully'));
 });

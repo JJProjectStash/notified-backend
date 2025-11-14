@@ -2,7 +2,7 @@
  * Student Service
  * Business logic for student management
  * Based on JavaFX StudentService
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -10,15 +10,20 @@
 const { Student, Record } = require('../models');
 const ValidationUtil = require('../utils/validationUtil');
 const logger = require('../utils/logger');
-const { ERROR_MESSAGES, SUCCESS_MESSAGES, RECORD_TYPES, DEFAULT_YEAR_PREFIX } = require('../config/constants');
+const {
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+  RECORD_TYPES,
+  DEFAULT_YEAR_PREFIX,
+} = require('../config/constants');
 
 class StudentService {
   /**
    * Get all students with pagination
    */
   async getAllStudents(page = 1, limit = 10, filters = {}) {
-    const query = { isActive: true, ...filters };
-    
+    const query = { ...filters };
+
     const students = await Student.find(query)
       .sort({ studentNumber: 1 })
       .skip((page - 1) * limit)
@@ -59,7 +64,8 @@ class StudentService {
    * Create new student
    */
   async createStudent(studentData, userId) {
-    const { studentNumber, firstName, lastName, email, section, guardianName, guardianEmail } = studentData;
+    const { studentNumber, firstName, lastName, email, section, guardianName, guardianEmail } =
+      studentData;
 
     // Validate student number
     if (!ValidationUtil.isValidStudentNumber(studentNumber)) {
@@ -142,7 +148,7 @@ class StudentService {
   }
 
   /**
-   * Delete student (soft delete)
+   * Delete student (hard delete)
    */
   async deleteStudent(studentId, userId) {
     const student = await Student.findById(studentId);
@@ -151,16 +157,16 @@ class StudentService {
       throw new Error(ERROR_MESSAGES.STUDENT_NOT_FOUND);
     }
 
-    student.isActive = false;
-    await student.save();
-
-    // Create record
+    // Create record before deletion
     await Record.createStudentRecord(
       student._id,
       RECORD_TYPES.STUDENT_DELETED,
       `Student deleted: ${student.firstName} ${student.lastName} (${student.studentNumber})`,
       userId
     );
+
+    // Hard delete - permanently remove from database
+    await Student.findByIdAndDelete(studentId);
 
     logger.info(`Student deleted: ${student.studentNumber}`);
 
@@ -179,9 +185,8 @@ class StudentService {
    */
   async searchStudents(query, page = 1, limit = 10) {
     const searchRegex = new RegExp(query, 'i');
-    
+
     const students = await Student.find({
-      isActive: true,
       $or: [
         { studentNumber: searchRegex },
         { firstName: searchRegex },
@@ -195,7 +200,6 @@ class StudentService {
       .limit(limit);
 
     const total = await Student.countDocuments({
-      isActive: true,
       $or: [
         { studentNumber: searchRegex },
         { firstName: searchRegex },

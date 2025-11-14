@@ -1,6 +1,6 @@
 const { Subject, Enrollment, Record } = require('../models');
 const { RECORD_TYPES, ERROR_MESSAGES, SUCCESS_MESSAGES } = require('../config/constants');
-const { ValidationUtil } = require('../utils/validationUtil');
+const ValidationUtil = require('../utils/validationUtil');
 const logger = require('../utils/logger');
 
 /**
@@ -69,9 +69,7 @@ class SubjectService {
    */
   async getSubjectById(id) {
     try {
-      const subject = await Subject.findById(id)
-        .populate('createdBy', 'name email')
-        .lean();
+      const subject = await Subject.findById(id).populate('createdBy', 'name email').lean();
 
       if (!subject) {
         const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
