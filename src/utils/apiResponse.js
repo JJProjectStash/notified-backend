@@ -1,7 +1,7 @@
 /**
  * API Response Utility
  * Standardized response format for all API endpoints
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -11,18 +11,43 @@ const { HTTP_STATUS } = require('../config/constants');
 class ApiResponse {
   /**
    * Send success response
-   * @param {Object} res - Express response object
-   * @param {*} data - Response data
-   * @param {String} message - Success message
+   * Supports two patterns:
+   * 1. ApiResponse.success(res, data, message) - Old pattern
+   * 2. res.json(ApiResponse.success(data, message)) - New pattern
+   *
+   * @param {Object} resOrData - Express response object OR data
+   * @param {*} dataOrMessage - Response data OR message
+   * @param {String} messageOrStatusCode - Success message OR status code
    * @param {Number} statusCode - HTTP status code
    */
-  static success(res, data = null, message = 'Success', statusCode = HTTP_STATUS.OK) {
-    return res.status(statusCode).json({
-      success: true,
-      message,
-      data,
-      timestamp: new Date().toISOString(),
-    });
+  static success(resOrData, dataOrMessage, messageOrStatusCode, statusCode) {
+    // Check if first argument is Express response object (has json method)
+    if (resOrData && typeof resOrData.json === 'function') {
+      // Old pattern: success(res, data, message, statusCode)
+      const res = resOrData;
+      const data = dataOrMessage;
+      const message = messageOrStatusCode || 'Success';
+      const code = statusCode || HTTP_STATUS.OK;
+
+      return res.status(code).json({
+        success: true,
+        message,
+        data,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // New pattern: success(data, message, statusCode) - returns object
+      const data = resOrData;
+      const message = dataOrMessage || 'Success';
+      const code = messageOrStatusCode || HTTP_STATUS.OK;
+
+      return {
+        success: true,
+        message,
+        data,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
   /**
@@ -48,38 +73,76 @@ class ApiResponse {
 
   /**
    * Send paginated response
-   * @param {Object} res - Express response object
-   * @param {Array} data - Array of items
-   * @param {Number} page - Current page
-   * @param {Number} limit - Items per page
-   * @param {Number} total - Total number of items
-   * @param {String} message - Success message
+   * Supports two patterns for backward compatibility
+   *
+   * @param {Object} resOrData - Express response object OR data array
+   * @param {Array} dataOrPage - Array of items OR page number
+   * @param {Number} pageOrLimit - Current page OR limit
+   * @param {Number} limitOrTotal - Items per page OR total
+   * @param {Number} totalOrMessage - Total number of items OR message
+   * @param {String} messageOrStatusCode - Success message OR status code
+   * @param {Number} statusCode - HTTP status code
    */
   static paginated(
-    res,
-    data,
-    page,
-    limit,
-    total,
-    message = 'Success',
-    statusCode = HTTP_STATUS.OK
+    resOrData,
+    dataOrPage,
+    pageOrLimit,
+    limitOrTotal,
+    totalOrMessage,
+    messageOrStatusCode,
+    statusCode
   ) {
-    const totalPages = Math.ceil(total / limit);
+    // Check if first argument is Express response object
+    if (resOrData && typeof resOrData.json === 'function') {
+      // Old pattern: paginated(res, data, page, limit, total, message, statusCode)
+      const res = resOrData;
+      const data = dataOrPage;
+      const page = pageOrLimit;
+      const limit = limitOrTotal;
+      const total = totalOrMessage;
+      const message = messageOrStatusCode || 'Success';
+      const code = statusCode || HTTP_STATUS.OK;
+      const totalPages = Math.ceil(total / limit);
 
-    return res.status(statusCode).json({
-      success: true,
-      message,
-      data,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-      timestamp: new Date().toISOString(),
-    });
+      return res.status(code).json({
+        success: true,
+        message,
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // New pattern: paginated(data, page, limit, total, message, statusCode) - returns object
+      const data = resOrData;
+      const page = dataOrPage;
+      const limit = pageOrLimit;
+      const total = limitOrTotal;
+      const message = totalOrMessage || 'Success';
+      const code = messageOrStatusCode || HTTP_STATUS.OK;
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        success: true,
+        message,
+        data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
   /**

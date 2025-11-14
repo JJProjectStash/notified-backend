@@ -1,6 +1,6 @@
 /**
  * Notification Routes
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -8,9 +8,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { requireStaff } = require('../middleware/rbac');
-const { validate } = require('../middleware/validate');
+const { protect, requireStaff, validate } = require('../middleware');
 const notificationController = require('../controllers/notificationController');
 
 /**
@@ -46,10 +44,7 @@ const createNotificationValidation = [
     .optional()
     .isIn(['low', 'medium', 'high', 'urgent'])
     .withMessage('Invalid priority level'),
-  body('student')
-    .optional()
-    .isMongoId()
-    .withMessage('Invalid student ID'),
+  body('student').optional().isMongoId().withMessage('Invalid student ID'),
 ];
 
 // Routes
@@ -61,6 +56,12 @@ router.get('/:id', notificationController.getNotificationById);
 router.put('/:id/read', notificationController.markAsRead);
 router.delete('/:id', notificationController.deleteNotification);
 router.get('/', notificationController.getNotifications);
-router.post('/', requireStaff, createNotificationValidation, validate, notificationController.createNotification);
+router.post(
+  '/',
+  requireStaff,
+  createNotificationValidation,
+  validate,
+  notificationController.createNotification
+);
 
 module.exports = router;

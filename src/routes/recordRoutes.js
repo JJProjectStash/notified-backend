@@ -1,14 +1,13 @@
 /**
  * Record Routes
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
 
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
-const { requireAdmin, requireStaff } = require('../middleware/rbac');
+const { protect, requireAdmin, requireStaff } = require('../middleware');
 const recordController = require('../controllers/recordController');
 
 /**

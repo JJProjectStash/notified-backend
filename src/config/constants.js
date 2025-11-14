@@ -1,7 +1,7 @@
 /**
  * Application Constants
  * Centralized constants for the Notified backend
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -114,6 +114,7 @@ module.exports = {
     NOTIFICATIONS_RETRIEVED: 'Notifications retrieved successfully',
     RECORD_RETRIEVED: 'Record retrieved successfully',
     RECORDS_RETRIEVED: 'Records retrieved successfully',
+    EMAIL_SENT: 'Email sent successfully',
     LOGIN_SUCCESS: 'Login successful',
     LOGOUT_SUCCESS: 'Logout successful',
   },

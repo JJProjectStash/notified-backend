@@ -1,5 +1,5 @@
 const recordService = require('../services/recordService');
-const { ApiResponse } = require('../utils/apiResponse');
+const ApiResponse = require('../utils/apiResponse');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { SUCCESS_MESSAGES } = require('../config/constants');
 
@@ -27,7 +27,9 @@ exports.getAllRecords = asyncHandler(async (req, res) => {
   res.json(
     ApiResponse.paginated(
       result.records,
-      result.pagination,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
       SUCCESS_MESSAGES.RECORDS_RETRIEVED
     )
   );
@@ -57,7 +59,9 @@ exports.getRecordsByType = asyncHandler(async (req, res) => {
   res.json(
     ApiResponse.paginated(
       result.records,
-      result.pagination,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
       SUCCESS_MESSAGES.RECORDS_RETRIEVED
     )
   );
@@ -72,9 +76,7 @@ exports.getRecordsByDateRange = asyncHandler(async (req, res) => {
   const { startDate, endDate, page, limit } = req.query;
 
   if (!startDate || !endDate) {
-    return res.status(400).json(
-      ApiResponse.error('Start date and end date are required')
-    );
+    return res.status(400).json(ApiResponse.error('Start date and end date are required'));
   }
 
   const result = await recordService.getRecordsByDateRange(startDate, endDate, {
@@ -85,7 +87,9 @@ exports.getRecordsByDateRange = asyncHandler(async (req, res) => {
   res.json(
     ApiResponse.paginated(
       result.records,
-      result.pagination,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
       SUCCESS_MESSAGES.RECORDS_RETRIEVED
     )
   );
@@ -148,7 +152,9 @@ exports.getTodayRecords = asyncHandler(async (req, res) => {
   res.json(
     ApiResponse.paginated(
       result.records,
-      result.pagination,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
       "Today's records retrieved successfully"
     )
   );
@@ -180,5 +186,5 @@ exports.getRecordStats = asyncHandler(async (req, res) => {
 
   const stats = await recordService.getRecordStats(filters);
 
-  ApiResponse.success(res, stats, 'Record statistics retrieved successfully');
+  res.json(ApiResponse.success(stats, 'Record statistics retrieved successfully'));
 });

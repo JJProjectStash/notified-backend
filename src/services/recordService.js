@@ -1,6 +1,6 @@
 const { Record, Student, Subject, User } = require('../models');
 const { RECORD_TYPES, ERROR_MESSAGES } = require('../config/constants');
-const { ValidationUtil } = require('../utils/validationUtil');
+const ValidationUtil = require('../utils/validationUtil');
 const logger = require('../utils/logger');
 
 /**

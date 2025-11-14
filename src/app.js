@@ -28,6 +28,7 @@ const subjectRoutes = require('./routes/subjectRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const recordRoutes = require('./routes/recordRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const emailRoutes = require('./routes/emailRoutes');
 
 const app = express();
 
@@ -91,6 +92,7 @@ app.use('/api/v1/subjects', subjectRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/records', recordRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/emails', emailRoutes);
 
 // Root Route
 app.get('/', (req, res) => {

@@ -1,5 +1,5 @@
 const subjectService = require('../services/subjectService');
-const { ApiResponse } = require('../utils/apiResponse');
+const ApiResponse = require('../utils/apiResponse');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { SUCCESS_MESSAGES } = require('../config/constants');
 
@@ -21,7 +21,9 @@ exports.getAllSubjects = asyncHandler(async (req, res) => {
   res.json(
     ApiResponse.paginated(
       result.subjects,
-      result.pagination,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
       SUCCESS_MESSAGES.SUBJECTS_RETRIEVED
     )
   );
@@ -63,11 +65,7 @@ exports.createSubject = asyncHandler(async (req, res) => {
  * @access Private (Admin/Staff)
  */
 exports.updateSubject = asyncHandler(async (req, res) => {
-  const subject = await subjectService.updateSubject(
-    req.params.id,
-    req.body,
-    req.user.id
-  );
+  const subject = await subjectService.updateSubject(req.params.id, req.body, req.user.id);
   res.json(ApiResponse.success(subject, SUCCESS_MESSAGES.SUBJECT_UPDATED));
 });
 
@@ -98,7 +96,9 @@ exports.searchSubjects = asyncHandler(async (req, res) => {
   res.json(
     ApiResponse.paginated(
       result.subjects,
-      result.pagination,
+      result.pagination.page,
+      result.pagination.limit,
+      result.pagination.total,
       SUCCESS_MESSAGES.SUBJECTS_RETRIEVED
     )
   );
@@ -111,10 +111,7 @@ exports.searchSubjects = asyncHandler(async (req, res) => {
  */
 exports.getSubjectsByYearAndSection = asyncHandler(async (req, res) => {
   const { yearLevel, section } = req.params;
-  const subjects = await subjectService.getSubjectsByYearAndSection(
-    parseInt(yearLevel),
-    section
-  );
+  const subjects = await subjectService.getSubjectsByYearAndSection(parseInt(yearLevel), section);
   res.json(ApiResponse.success(subjects, SUCCESS_MESSAGES.SUBJECTS_RETRIEVED));
 });
 
