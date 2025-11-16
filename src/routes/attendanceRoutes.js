@@ -7,6 +7,7 @@
 
 const express = require('express');
 const { body } = require('express-validator');
+
 const router = express.Router();
 const { protect, requireAdmin, requireStaff, validate } = require('../middleware');
 const attendanceController = require('../controllers/attendanceController');

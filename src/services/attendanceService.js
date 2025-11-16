@@ -1,10 +1,10 @@
+const ExcelJS = require('exceljs');
+const fs = require('fs').promises;
 const { Attendance, Student, Subject, Record, Notification } = require('../models');
 const { RECORD_TYPES, ATTENDANCE_STATUS, ERROR_MESSAGES, NOTIFICATION_TYPES } = require('../config/constants');
 const { ValidationUtil } = require('../utils/validationUtil');
 const { EmailUtil } = require('../utils/emailUtil');
 const logger = require('../utils/logger');
-const ExcelJS = require('exceljs');
-const fs = require('fs').promises;
 
 /**
  * Attendance Service
@@ -665,9 +665,12 @@ class AttendanceService {
       const errors = [];
 
       // Skip header row (row 1)
+      const rows = [];
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Skip header
+        if (rowNumber > 1) rows.push({ row, rowNumber });
+      });
 
+      for (const { row, rowNumber } of rows) {
         try {
           const record = {
             studentId: row.getCell(1).value,
@@ -683,7 +686,7 @@ class AttendanceService {
               row: rowNumber,
               error: 'Missing required fields',
             });
-            return;
+            continue;
           }
 
           // Validate status
@@ -692,7 +695,7 @@ class AttendanceService {
               row: rowNumber,
               error: `Invalid status: ${record.status}`,
             });
-            return;
+            continue;
           }
 
           records.push(record);
@@ -702,10 +705,14 @@ class AttendanceService {
             error: error.message,
           });
         }
-      });
+      }
 
       // Clean up temp file
-      await fs.unlink(file.tempFilePath).catch(() => {});
+      try {
+        await fs.unlink(file.tempFilePath);
+      } catch (unlinkError) {
+        // Ignore cleanup errors
+      }
 
       if (errors.length > 0) {
         return {

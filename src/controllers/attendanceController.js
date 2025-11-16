@@ -224,13 +224,15 @@ exports.getStudentsSummary = asyncHandler(async (req, res) => {
  * @access Private (Staff)
  */
 exports.importFromExcel = asyncHandler(async (req, res) => {
-  if (!req.files || !req.files.file) {
+  const { files } = req;
+  
+  if (!files || !files.file) {
     return res.status(400).json(
       ApiResponse.error('No file uploaded')
     );
   }
 
-  const file = req.files.file;
+  const { file } = files;
   const result = await attendanceService.importFromExcel(file, req.user.id);
   
   res.status(201).json(
