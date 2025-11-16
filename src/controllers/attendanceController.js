@@ -1,5 +1,6 @@
 const attendanceService = require('../services/attendanceService');
-const { ApiResponse } = require('../utils/apiResponse');
+const ApiResponse = require('../utils/apiResponse');
+const logger = require('../utils/logger');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { SUCCESS_MESSAGES } = require('../config/constants');
 
@@ -9,10 +10,29 @@ const { SUCCESS_MESSAGES } = require('../config/constants');
  * @access Private (Staff)
  */
 exports.markAttendance = asyncHandler(async (req, res) => {
-  const attendance = await attendanceService.markAttendance(req.body, req.user.id);
-  res.status(201).json(
-    ApiResponse.created(attendance, SUCCESS_MESSAGES.ATTENDANCE_MARKED)
-  );
+  // Normalize incoming fields to expected shape
+  const normalized = {};
+  normalized.studentId = req.body.studentId || req.body.student || req.body.student_id;
+  normalized.subjectId = req.body.subjectId || req.body.subject || req.body.subject_id;
+
+  // Date: if provided and valid ISO use it, otherwise try coercion, else default to today
+  let dateVal = req.body.date;
+  if (!dateVal) {
+    dateVal = new Date();
+  }
+  const parsedDate = new Date(dateVal);
+  if (isNaN(parsedDate.getTime())) {
+    // fallback to current date
+    normalized.date = new Date();
+  } else {
+    normalized.date = parsedDate;
+  }
+
+  normalized.status = req.body.status;
+  normalized.remarks = req.body.remarks;
+
+  const attendance = await attendanceService.markAttendance(normalized, req.user.id);
+  return ApiResponse.created(res, attendance, SUCCESS_MESSAGES.ATTENDANCE_MARKED);
 });
 
 /**
@@ -198,6 +218,15 @@ exports.getDailySummary = asyncHandler(async (req, res) => {
   const { subjectId } = req.query;
   
   const summary = await attendanceService.getDailySummary(date, subjectId);
+
+  // Debugging log — log the summary object to help trace `success` undefined error
+  // This will show up in the server logs when the endpoint is hit
+  try {
+    logger.info(`Daily summary for ${date} (${subjectId || 'all subjects'}): ${JSON.stringify(summary)}`);
+  } catch (logError) {
+    logger.error('Failed to stringify daily summary for logging:', logError);
+  }
+
   res.json(ApiResponse.success(summary, 'Daily summary retrieved successfully'));
 });
 

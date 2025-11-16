@@ -19,19 +19,23 @@ router.use(protect);
 
 // Validation rules
 const markAttendanceValidation = [
-  body('studentId')
-    .notEmpty()
-    .withMessage('Student ID is required')
-    .isMongoId()
-    .withMessage('Invalid student ID'),
-  body('subjectId')
-    .notEmpty()
-    .withMessage('Subject ID is required')
-    .isMongoId()
-    .withMessage('Invalid subject ID'),
+  // Accept either `studentId` or `student` (legacy frontend); validate presence
+  body().custom((_, { req }) => {
+    if (!req.body.studentId && !req.body.student) {
+      throw new Error('Student ID is required');
+    }
+    return true;
+  }),
+  // Accept either `subjectId` or `subject` (legacy frontend)
+  body().custom((_, { req }) => {
+    if (!req.body.subjectId && !req.body.subject && !req.body.subject_id) {
+      throw new Error('Subject ID is required');
+    }
+    return true;
+  }),
+  // Date is optional; if provided it should be ISO8601. Controller will coerce common formats.
   body('date')
-    .notEmpty()
-    .withMessage('Date is required')
+    .optional()
     .isISO8601()
     .withMessage('Invalid date format'),
   body('status')

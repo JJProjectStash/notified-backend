@@ -23,6 +23,14 @@ const validate = (req, res, next) => {
       value: err.value,
     }));
 
+    // Log validation failure for debugging
+    try {
+      const logger = require('../utils/logger');
+      logger.warn(`Validation failed for ${req.originalUrl}: ${JSON.stringify(extractedErrors)}`);
+      logger.debug(`Request body: ${JSON.stringify(req.body)}`);
+    } catch (logErr) {
+      // ignore logging errors
+    }
     return ApiResponse.validationError(res, extractedErrors);
   }
 
