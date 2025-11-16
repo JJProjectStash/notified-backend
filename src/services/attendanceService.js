@@ -29,26 +29,39 @@ class AttendanceService {
         throw error;
       }
 
-      // Validate subject exists
-      const subject = await Subject.findById(subjectId);
-      if (!subject) {
-        const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
-        error.statusCode = 404;
-        throw error;
+      // Validate subject exists when provided (subject is optional for arrival-only marks)
+      let subject = null;
+      if (subjectId) {
+        subject = await Subject.findById(subjectId);
+        if (!subject) {
+          const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
+          error.statusCode = 404;
+          throw error;
+        }
       }
 
       // Check if attendance already marked for this date
       const attendanceDate = new Date(date);
       attendanceDate.setHours(0, 0, 0, 0);
 
-      const existingAttendance = await Attendance.findOne({
+      // Check for existing attendance for the same student/date.
+      // If subject is present, include it in the check; otherwise look for records with no subject.
+      const attendanceQuery = {
         student: studentId,
-        subject: subjectId,
         date: {
           $gte: attendanceDate,
           $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000),
         },
-      });
+      };
+
+      if (subjectId) {
+        attendanceQuery.subject = subjectId;
+      } else {
+        // Match documents where subject is null/undefined (arrival-only marks)
+        attendanceQuery.subject = { $exists: false };
+      }
+
+      const existingAttendance = await Attendance.findOne(attendanceQuery);
 
       if (existingAttendance) {
         const error = new Error(ERROR_MESSAGES.ATTENDANCE_EXISTS);
@@ -66,33 +79,34 @@ class AttendanceService {
         markedBy: userId,
       });
 
-      // Create activity record
+      // Create activity record (use subject name when available)
       await Record.create({
         student: studentId,
-        subject: subjectId,
+        subject: subjectId || null,
         recordType: RECORD_TYPES.ATTENDANCE_MARKED,
-        recordData: `Attendance marked as ${status} for ${subject.subjectName}`,
+        recordData: `Attendance marked as ${status}${subject ? ` for ${subject.subjectName}` : ''}`,
         performedBy: userId,
       });
 
       // Send notification if absent or late
       if (status === ATTENDANCE_STATUS.ABSENT || status === ATTENDANCE_STATUS.LATE) {
-        await Notification.createNotification({
-          recipient: student.createdBy,
+        const subjectName = subject ? subject.subjectName : 'the school';
+
+        await Notification.createNotification(student.createdBy, {
           student: studentId,
           type: NOTIFICATION_TYPES.ATTENDANCE_ALERT,
           title: `Attendance Alert: ${student.fullName}`,
-          message: `${student.fullName} was marked ${status} in ${subject.subjectName} on ${attendanceDate.toLocaleDateString()}`,
+          message: `${student.fullName} was marked ${status}${subject ? ` in ${subject.subjectName}` : ''} on ${attendanceDate.toLocaleDateString()}`,
           priority: status === ATTENDANCE_STATUS.ABSENT ? 'high' : 'medium',
         });
 
-        // Send email to guardian if available
+        // Send email to guardian if available; include subject name when present
         if (student.guardianEmail) {
           try {
             await EmailUtil.sendAttendanceNotification(
               student.guardianEmail,
               student.fullName,
-              subject.subjectName,
+              subjectName,
               status,
               attendanceDate
             );

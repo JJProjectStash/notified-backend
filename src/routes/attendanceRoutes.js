@@ -19,20 +19,40 @@ router.use(protect);
 
 // Validation rules
 const markAttendanceValidation = [
-  // Accept either `studentId` or `student` (legacy frontend); validate presence
+  // Ensure student ID is present (supports legacy `student`/`student_id`) and validate format
   body().custom((_, { req }) => {
-    if (!req.body.studentId && !req.body.student) {
+    const sid = req.body.studentId || req.body.student || req.body.student_id;
+    if (!sid) {
       throw new Error('Student ID is required');
     }
     return true;
   }),
-  // Accept either `subjectId` or `subject` (legacy frontend)
-  body().custom((_, { req }) => {
-    if (!req.body.subjectId && !req.body.subject && !req.body.subject_id) {
-      throw new Error('Subject ID is required');
-    }
-    return true;
-  }),
+  // Validate that any provided subject identifiers are valid Mongo IDs (subject is optional)
+  body('subjectId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid subject ID'),
+  body('subject')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid subject ID'),
+  body('subject_id')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid subject ID'),
+  // Also validate student id format when provided in any of the accepted keys
+  body('studentId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid student ID'),
+  body('student')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid student ID'),
+  body('student_id')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid student ID'),
   // Date is optional; if provided it should be ISO8601. Controller will coerce common formats.
   body('date')
     .optional()

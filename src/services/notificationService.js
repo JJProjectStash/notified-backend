@@ -25,8 +25,7 @@ class NotificationService {
         throw error;
       }
 
-      const notification = await Notification.createNotification({
-        recipient,
+      const notification = await Notification.createNotification(recipient, {
         student,
         type,
         title,
