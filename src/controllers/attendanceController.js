@@ -145,3 +145,123 @@ exports.getTodayAttendance = asyncHandler(async (req, res) => {
   const records = await attendanceService.getTodayAttendance(subjectId);
   res.json(ApiResponse.success(records, "Today's attendance retrieved successfully"));
 });
+
+/**
+ * Bulk mark attendance
+ * @route POST /api/v1/attendance/bulk-mark
+ * @access Private (Staff)
+ */
+exports.bulkMarkAttendance = asyncHandler(async (req, res) => {
+  const { records } = req.body;
+  const result = await attendanceService.bulkMarkAttendance(records, req.user.id);
+  res.status(201).json(
+    ApiResponse.success(result, 'Bulk attendance marked successfully')
+  );
+});
+
+/**
+ * Get attendance records with filters
+ * @route GET /api/v1/attendance/records
+ * @access Private
+ */
+exports.getAttendanceRecords = asyncHandler(async (req, res) => {
+  const { startDate, endDate, studentId, subjectId, status, page, limit } = req.query;
+
+  const filters = {};
+  if (studentId) filters.studentId = studentId;
+  if (subjectId) filters.subjectId = subjectId;
+  if (status) filters.status = status;
+  if (startDate) filters.startDate = startDate;
+  if (endDate) filters.endDate = endDate;
+
+  const result = await attendanceService.getAttendanceRecords(
+    filters,
+    { page, limit }
+  );
+
+  res.json(
+    ApiResponse.paginated(
+      result.records,
+      result.pagination,
+      'Attendance records retrieved successfully'
+    )
+  );
+});
+
+/**
+ * Get daily attendance summary
+ * @route GET /api/v1/attendance/summary/daily/:date
+ * @access Private
+ */
+exports.getDailySummary = asyncHandler(async (req, res) => {
+  const { date } = req.params;
+  const { subjectId } = req.query;
+  
+  const summary = await attendanceService.getDailySummary(date, subjectId);
+  res.json(ApiResponse.success(summary, 'Daily summary retrieved successfully'));
+});
+
+/**
+ * Get all students attendance summary
+ * @route GET /api/v1/attendance/summary/students
+ * @access Private
+ */
+exports.getStudentsSummary = asyncHandler(async (req, res) => {
+  const { subjectId, startDate, endDate } = req.query;
+  
+  const filters = {};
+  if (subjectId) filters.subjectId = subjectId;
+  if (startDate) filters.startDate = startDate;
+  if (endDate) filters.endDate = endDate;
+
+  const summary = await attendanceService.getStudentsSummary(filters);
+  res.json(ApiResponse.success(summary, 'Students summary retrieved successfully'));
+});
+
+/**
+ * Import attendance from Excel
+ * @route POST /api/v1/attendance/import/excel
+ * @access Private (Staff)
+ */
+exports.importFromExcel = asyncHandler(async (req, res) => {
+  if (!req.files || !req.files.file) {
+    return res.status(400).json(
+      ApiResponse.error('No file uploaded')
+    );
+  }
+
+  const file = req.files.file;
+  const result = await attendanceService.importFromExcel(file, req.user.id);
+  
+  res.status(201).json(
+    ApiResponse.success(result, 'Attendance imported successfully')
+  );
+});
+
+/**
+ * Export attendance to Excel
+ * @route GET /api/v1/attendance/export/excel
+ * @access Private
+ */
+exports.exportToExcel = asyncHandler(async (req, res) => {
+  const { startDate, endDate, studentId, subjectId, status } = req.query;
+
+  const filters = {};
+  if (studentId) filters.studentId = studentId;
+  if (subjectId) filters.subjectId = subjectId;
+  if (status) filters.status = status;
+  if (startDate) filters.startDate = startDate;
+  if (endDate) filters.endDate = endDate;
+
+  const buffer = await attendanceService.exportToExcel(filters);
+
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename=attendance-${Date.now()}.xlsx`
+  );
+  res.send(buffer);
+});

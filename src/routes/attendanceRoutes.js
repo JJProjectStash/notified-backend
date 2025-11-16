@@ -57,7 +57,65 @@ const updateAttendanceValidation = [
     .withMessage('Remarks must not exceed 500 characters'),
 ];
 
+// Bulk mark validation
+const bulkMarkValidation = [
+  body('records')
+    .isArray({ min: 1 })
+    .withMessage('Records must be a non-empty array'),
+  body('records.*.studentId')
+    .notEmpty()
+    .withMessage('Student ID is required')
+    .isMongoId()
+    .withMessage('Invalid student ID'),
+  body('records.*.subjectId')
+    .notEmpty()
+    .withMessage('Subject ID is required')
+    .isMongoId()
+    .withMessage('Invalid subject ID'),
+  body('records.*.status')
+    .notEmpty()
+    .isIn(['present', 'absent', 'late', 'excused'])
+    .withMessage('Invalid status'),
+  body('records.*.date')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid date format'),
+];
+
 // Routes
+
+// New frontend-required endpoints
+router.post(
+  '/mark',
+  requireStaff,
+  markAttendanceValidation,
+  validate,
+  attendanceController.markAttendance
+);
+
+router.post(
+  '/bulk-mark',
+  requireStaff,
+  bulkMarkValidation,
+  validate,
+  attendanceController.bulkMarkAttendance
+);
+
+router.get('/records', attendanceController.getAttendanceRecords);
+
+router.get('/summary/daily/:date', attendanceController.getDailySummary);
+
+router.get('/summary/students', attendanceController.getStudentsSummary);
+
+router.post(
+  '/import/excel',
+  requireStaff,
+  attendanceController.importFromExcel
+);
+
+router.get('/export/excel', attendanceController.exportToExcel);
+
+// Existing routes
 router.get('/range', attendanceController.getAttendanceByDateRange);
 router.get('/student/:studentId/summary', attendanceController.getAttendanceSummary);
 router.get('/student/:studentId', attendanceController.getStudentAttendance);

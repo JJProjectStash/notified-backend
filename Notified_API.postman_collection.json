@@ -355,6 +355,68 @@
       "name": "Attendance",
       "item": [
         {
+          "name": "Mark Single Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"date\": \"2025-11-16T00:00:00.000Z\",\n  \"status\": \"present\",\n  \"remarks\": \"Test attendance\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance/mark",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "mark"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Mark Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"records\": [\n    {\n      \"studentId\": \"{{studentId}}\",\n      \"subjectId\": \"{{subjectId}}\",\n      \"status\": \"present\"\n    },\n    {\n      \"studentId\": \"{{studentId2}}\",\n      \"subjectId\": \"{{subjectId}}\",\n      \"status\": \"late\",\n      \"remarks\": \"Arrived 15 minutes late\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance/bulk-mark",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "bulk-mark"]
+            }
+          }
+        },
+        {
           "name": "Get Attendance Records",
           "request": {
             "auth": {
@@ -369,9 +431,343 @@
             },
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/attendance",
+              "raw": "{{baseUrl}}/attendance/records?page=1&limit=10",
               "host": ["{{baseUrl}}"],
-              "path": ["attendance"]
+              "path": ["attendance", "records"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "studentId",
+                  "value": "{{studentId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "present",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-11-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-11-16",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Daily Summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/summary/daily/2025-11-16",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "summary", "daily", "2025-11-16"],
+              "query": [
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Students Summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/summary/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "summary", "students"],
+              "query": [
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-11-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-11-16",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export to Excel",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/export/excel",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "export", "excel"],
+              "query": [
+                {
+                  "key": "studentId",
+                  "value": "{{studentId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-11-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-11-16",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "present",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Attendance by Date Range",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/range?startDate=2025-11-01&endDate=2025-11-16",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "range"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2025-11-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-11-16"
+                },
+                {
+                  "key": "studentId",
+                  "value": "{{studentId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Student Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/student/{{studentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "student", "{{studentId}}"],
+              "query": [
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": "2025-11-01",
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": "2025-11-16",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Subject Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/subject/{{subjectId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "subject", "{{subjectId}}"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2025-11-16",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "present",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Today's Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/subject/{{subjectId}}/today",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "subject", "{{subjectId}}", "today"]
+            }
+          }
+        },
+        {
+          "name": "Update Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"excused\",\n  \"remarks\": \"Doctor's appointment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance/{{attendanceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "{{attendanceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Attendance",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/attendance/{{attendanceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "{{attendanceId}}"]
             }
           }
         }

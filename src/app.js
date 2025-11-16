@@ -15,6 +15,7 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
 const rateLimit = require('express-rate-limit');
+const fileUpload = require('express-fileupload');
 
 const connectDB = require('./config/database');
 const logger = require('./utils/logger');
@@ -60,6 +61,14 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+
+// File Upload Middleware
+app.use(fileUpload({
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max file size
+  abortOnLimit: true,
+  useTempFiles: true,
+  tempFileDir: '/tmp/',
+}));
 
 // Data Sanitization against NoSQL Injection
 app.use(mongoSanitize());
