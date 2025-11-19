@@ -40,10 +40,17 @@ connectDB();
 app.use(helmet());
 
 // CORS Configuration
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim())
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
+// Ensure Cloudflare Pages origin is present in production
+if (!allowedOrigins.includes('https://notified-frontend.pages.dev')) {
+  allowedOrigins.push('https://notified-frontend.pages.dev');
+}
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:3000', 'http://localhost:5173'],
+  origin: allowedOrigins,
   credentials: true,
   optionsSuccessStatus: 200,
 };
