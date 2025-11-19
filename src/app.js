@@ -100,6 +100,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Lightweight API health route (no DB queries)
+// Safe to ping every 5-10 minutes to keep the server warm
+app.get('/api/v1/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Backend is alive',
+    timestamp: new Date().toISOString(),
+  });
+});
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
