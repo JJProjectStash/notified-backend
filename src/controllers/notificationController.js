@@ -10,9 +10,7 @@ const { SUCCESS_MESSAGES } = require('../config/constants');
  */
 exports.createNotification = asyncHandler(async (req, res) => {
   const notification = await notificationService.createNotification(req.body);
-  res.status(201).json(
-    ApiResponse.created(notification, SUCCESS_MESSAGES.NOTIFICATION_CREATED)
-  );
+  res.status(201).json(ApiResponse.created(notification, SUCCESS_MESSAGES.NOTIFICATION_CREATED));
 });
 
 /**
@@ -28,11 +26,7 @@ exports.getNotifications = asyncHandler(async (req, res) => {
   if (type) filters.type = type;
   if (priority) filters.priority = priority;
 
-  const result = await notificationService.getNotifications(
-    req.user.id,
-    filters,
-    { page, limit }
-  );
+  const result = await notificationService.getNotifications(req.user.id, filters, { page, limit });
 
   res.json(
     ApiResponse.paginated(
@@ -49,10 +43,7 @@ exports.getNotifications = asyncHandler(async (req, res) => {
  * @access Private
  */
 exports.getNotificationById = asyncHandler(async (req, res) => {
-  const notification = await notificationService.getNotificationById(
-    req.params.id,
-    req.user.id
-  );
+  const notification = await notificationService.getNotificationById(req.params.id, req.user.id);
   res.json(ApiResponse.success(notification, SUCCESS_MESSAGES.NOTIFICATION_RETRIEVED));
 });
 
@@ -62,10 +53,7 @@ exports.getNotificationById = asyncHandler(async (req, res) => {
  * @access Private
  */
 exports.markAsRead = asyncHandler(async (req, res) => {
-  const notification = await notificationService.markAsRead(
-    req.params.id,
-    req.user.id
-  );
+  const notification = await notificationService.markAsRead(req.params.id, req.user.id);
   res.json(ApiResponse.success(notification, SUCCESS_MESSAGES.NOTIFICATION_UPDATED));
 });
 

@@ -1,7 +1,7 @@
 /**
  * Student Controller
  * Handles HTTP requests for student management
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

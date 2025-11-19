@@ -1,7 +1,7 @@
 /**
  * Test Script for New Attendance Endpoints
  * Tests all the frontend-required attendance endpoints
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -41,9 +41,8 @@ async function createTestData() {
 
   try {
     // Find or create a test user
-    testUser = await User.findOne({ role: 'staff' }) || 
-               await User.findOne({ role: 'admin' });
-    
+    testUser = (await User.findOne({ role: 'staff' })) || (await User.findOne({ role: 'admin' }));
+
     if (!testUser) {
       console.error('❌ No staff or admin user found. Please create one first.');
       process.exit(1);
@@ -73,7 +72,6 @@ async function createTestData() {
       date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
     });
     console.log('✅ Cleaned up existing test data');
-
   } catch (error) {
     console.error('❌ Error creating test data:', error);
     throw error;
@@ -85,15 +83,18 @@ async function createTestData() {
  */
 async function testMarkAttendance() {
   console.log('\n🧪 Test 1: POST /api/attendance/mark');
-  
+
   try {
-    const result = await attendanceService.markAttendance({
-      studentId: testStudent1._id.toString(),
-      subjectId: testSubject._id.toString(),
-      date: new Date(),
-      status: ATTENDANCE_STATUS.PRESENT,
-      remarks: 'Test attendance',
-    }, testUser._id);
+    const result = await attendanceService.markAttendance(
+      {
+        studentId: testStudent1._id.toString(),
+        subjectId: testSubject._id.toString(),
+        date: new Date(),
+        status: ATTENDANCE_STATUS.PRESENT,
+        remarks: 'Test attendance',
+      },
+      testUser._id
+    );
 
     console.log('✅ Single attendance marked successfully');
     console.log('   Student:', result.student.firstName, result.student.lastName);
@@ -106,11 +107,54 @@ async function testMarkAttendance() {
 }
 
 /**
+ * Test duplicate marking returns 409 with existing attendance data
+ */
+async function testDuplicateMarkReturnsConflict() {
+  console.log('\n🧪 Test: Duplicate mark returns 409 with existing attendance data');
+
+  try {
+    const payload = {
+      studentId: testStudent1._id.toString(),
+      subjectId: testSubject._id.toString(),
+      date: new Date(),
+      status: ATTENDANCE_STATUS.PRESENT,
+      remarks: 'Duplicate record test',
+    };
+
+    // Ensure clean state for this student before first mark
+    await Attendance.deleteMany({
+      student: testStudent1._id,
+      date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+    });
+    // First mark
+    await attendanceService.markAttendance(payload, testUser._id);
+
+    // Duplicate should error with statusCode 409 and include data
+    try {
+      await attendanceService.markAttendance(payload, testUser._id);
+      console.error('❌ Duplicate mark did not throw an error');
+      return false;
+    } catch (dupErr) {
+      if (dupErr.statusCode === 409 && dupErr.data) {
+        console.log('✅ Duplicate mark returns 409 and data is present');
+        console.log('   Existing record student:', dupErr.data.student._id.toString());
+        return true;
+      }
+      console.error('❌ Duplicate mark did not return expected structure:', dupErr.message);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error in duplicate mark test:', error.message);
+    return false;
+  }
+}
+
+/**
  * Test 2: Bulk mark attendance
  */
 async function testBulkMarkAttendance() {
   console.log('\n🧪 Test 2: POST /api/attendance/bulk-mark');
-  
+
   try {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -148,11 +192,14 @@ async function testBulkMarkAttendance() {
  */
 async function testGetAttendanceRecords() {
   console.log('\n🧪 Test 3: GET /api/attendance/records');
-  
+
   try {
-    const result = await attendanceService.getAttendanceRecords({
-      subjectId: testSubject._id.toString(),
-    }, { page: 1, limit: 10 });
+    const result = await attendanceService.getAttendanceRecords(
+      {
+        subjectId: testSubject._id.toString(),
+      },
+      { page: 1, limit: 10 }
+    );
 
     console.log('✅ Attendance records retrieved successfully');
     console.log('   Total records:', result.pagination.total);
@@ -169,7 +216,7 @@ async function testGetAttendanceRecords() {
  */
 async function testGetDailySummary() {
   console.log('\n🧪 Test 4: GET /api/attendance/summary/daily/:date');
-  
+
   try {
     const today = new Date().toISOString().split('T')[0];
     const result = await attendanceService.getDailySummary(today, testSubject._id.toString());
@@ -193,7 +240,7 @@ async function testGetDailySummary() {
  */
 async function testGetStudentsSummary() {
   console.log('\n🧪 Test 5: GET /api/attendance/summary/students');
-  
+
   try {
     const result = await attendanceService.getStudentsSummary({
       subjectId: testSubject._id.toString(),
@@ -217,11 +264,47 @@ async function testGetStudentsSummary() {
 }
 
 /**
+ * Test updating an attendance record works via service
+ */
+async function testUpdateAttendance() {
+  console.log('\n🧪 Test: Update attendance via service');
+
+  try {
+    // Create a new attendance to update
+    const created = await attendanceService.markAttendance(
+      {
+        studentId: testStudent2._id.toString(),
+        subjectId: testSubject._id.toString(),
+        date: new Date(),
+        status: ATTENDANCE_STATUS.PRESENT,
+      },
+      testUser._id
+    );
+
+    const id = created._id;
+    const update = { status: 'late', remarks: 'Updated: student arrived late' };
+
+    const updated = await attendanceService.updateAttendance(id, update, testUser._id);
+
+    if (updated.status === 'late' && updated.remarks === update.remarks) {
+      console.log('✅ Attendance updated successfully:', updated._id);
+      return true;
+    }
+
+    console.error('❌ Attendance update did not reflect changes');
+    return false;
+  } catch (error) {
+    console.error('❌ Failed to update attendance:', error.message);
+    return false;
+  }
+}
+
+/**
  * Test 6: Export to Excel
  */
 async function testExportToExcel() {
   console.log('\n🧪 Test 6: GET /api/attendance/export/excel');
-  
+
   try {
     const buffer = await attendanceService.exportToExcel({
       subjectId: testSubject._id.toString(),
@@ -241,7 +324,7 @@ async function testExportToExcel() {
  */
 async function runTests() {
   console.log('🚀 Starting Attendance Endpoints Tests\n');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   try {
     await connectDB();
@@ -249,6 +332,8 @@ async function runTests() {
 
     const tests = [
       { name: 'Mark Single Attendance', fn: testMarkAttendance },
+      { name: 'Duplicate mark returns 409', fn: testDuplicateMarkReturnsConflict },
+      { name: 'Update attendance', fn: testUpdateAttendance },
       { name: 'Bulk Mark Attendance', fn: testBulkMarkAttendance },
       { name: 'Get Attendance Records', fn: testGetAttendanceRecords },
       { name: 'Get Daily Summary', fn: testGetDailySummary },
@@ -265,23 +350,22 @@ async function runTests() {
     // Summary
     console.log('\n' + '='.repeat(60));
     console.log('📊 TEST SUMMARY\n');
-    
-    const passed = results.filter(r => r.passed).length;
-    const failed = results.filter(r => !r.passed).length;
 
-    results.forEach(result => {
+    const passed = results.filter((r) => r.passed).length;
+    const failed = results.filter((r) => !r.passed).length;
+
+    results.forEach((result) => {
       console.log(result.passed ? '✅' : '❌', result.name);
     });
 
     console.log('\n' + '='.repeat(60));
     console.log(`Total: ${results.length} | Passed: ${passed} | Failed: ${failed}`);
-    
+
     if (failed === 0) {
       console.log('\n🎉 All tests passed!');
     } else {
       console.log('\n⚠️  Some tests failed. Please review the errors above.');
     }
-
   } catch (error) {
     console.error('\n❌ Test suite failed:', error);
   } finally {

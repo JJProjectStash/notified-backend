@@ -3,6 +3,7 @@
 Complete documentation for all attendance-related API endpoints, including the new frontend-required endpoints.
 
 ## 🔗 Base URL
+
 ```
 http://localhost:5000/api/v1/attendance
 ```
@@ -12,6 +13,7 @@ http://localhost:5000/api/v1/attendance
 ## 📌 New Frontend-Required Endpoints
 
 ### 1. Mark Single Attendance
+
 **POST** `/api/attendance/mark`
 
 Mark attendance for a single student.
@@ -19,6 +21,7 @@ Mark attendance for a single student.
 **Authentication:** Required (Staff role)
 
 **Request Body:**
+
 ```json
 {
   "studentId": "507f1f77bcf86cd799439011",
@@ -30,6 +33,7 @@ Mark attendance for a single student.
 ```
 
 **Parameters:**
+
 - `studentId` (required): MongoDB ObjectId of the student
 - `subjectId` (required): MongoDB ObjectId of the subject
 - `date` (required): ISO 8601 date string
@@ -37,6 +41,7 @@ Mark attendance for a single student.
 - `remarks` (optional): Additional notes (max 500 characters)
 
 **Response (201 Created):**
+
 ```json
 {
   "success": true,
@@ -71,6 +76,7 @@ Mark attendance for a single student.
 ---
 
 ### 2. Bulk Mark Attendance
+
 **POST** `/api/attendance/bulk-mark`
 
 Mark attendance for multiple students at once.
@@ -78,6 +84,7 @@ Mark attendance for multiple students at once.
 **Authentication:** Required (Staff role)
 
 **Request Body:**
+
 ```json
 {
   "records": [
@@ -98,11 +105,13 @@ Mark attendance for multiple students at once.
 ```
 
 **Parameters:**
+
 - `records` (required): Array of attendance records
   - Each record must have: `studentId`, `subjectId`, `status`
   - Optional: `date` (defaults to today), `remarks`
 
 **Response (201 Created):**
+
 ```json
 {
   "success": true,
@@ -111,7 +120,9 @@ Mark attendance for multiple students at once.
     "successful": [
       {
         "studentId": "507f1f77bcf86cd799439011",
-        "attendance": { /* attendance object */ }
+        "attendance": {
+          /* attendance object */
+        }
       }
     ],
     "failed": [
@@ -128,13 +139,15 @@ Mark attendance for multiple students at once.
 ---
 
 ### 3. Get Attendance Records
-**GET** `/api/attendance/records`
+
+**GET** `/api/attendance/records` (also available via `GET /api/v1/attendance`)
 
 Retrieve attendance records with flexible filtering and pagination.
 
 **Authentication:** Required
 
 **Query Parameters:**
+
 - `startDate` (optional): Start date for filtering (ISO 8601)
 - `endDate` (optional): End date for filtering (ISO 8601)
 - `studentId` (optional): Filter by student ID
@@ -144,11 +157,13 @@ Retrieve attendance records with flexible filtering and pagination.
 - `limit` (optional): Records per page (default: 10)
 
 **Example Request:**
+
 ```
 GET /api/attendance/records?subjectId=507f1f77bcf86cd799439012&status=absent&page=1&limit=20
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -188,6 +203,7 @@ GET /api/attendance/records?subjectId=507f1f77bcf86cd799439012&status=absent&pag
 ---
 
 ### 4. Get Daily Summary
+
 **GET** `/api/attendance/summary/daily/:date`
 
 Get attendance summary for a specific date.
@@ -195,17 +211,21 @@ Get attendance summary for a specific date.
 **Authentication:** Required
 
 **URL Parameters:**
+
 - `date` (required): Date in YYYY-MM-DD format
 
 **Query Parameters:**
+
 - `subjectId` (optional): Filter by subject
 
 **Example Request:**
+
 ```
 GET /api/attendance/summary/daily/2025-11-16?subjectId=507f1f77bcf86cd799439012
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -225,6 +245,7 @@ GET /api/attendance/summary/daily/2025-11-16?subjectId=507f1f77bcf86cd799439012
 ---
 
 ### 5. Get Students Summary
+
 **GET** `/api/attendance/summary/students`
 
 Get attendance summary for all students with statistics.
@@ -232,16 +253,19 @@ Get attendance summary for all students with statistics.
 **Authentication:** Required
 
 **Query Parameters:**
+
 - `subjectId` (optional): Filter by subject
 - `startDate` (optional): Start date for period
 - `endDate` (optional): End date for period
 
 **Example Request:**
+
 ```
 GET /api/attendance/summary/students?subjectId=507f1f77bcf86cd799439012&startDate=2025-11-01&endDate=2025-11-16
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "success": true,
@@ -280,6 +304,7 @@ GET /api/attendance/summary/students?subjectId=507f1f77bcf86cd799439012&startDat
 ---
 
 ### 6. Import from Excel
+
 **POST** `/api/attendance/import/excel`
 
 Import attendance records from an Excel file.
@@ -287,6 +312,7 @@ Import attendance records from an Excel file.
 **Authentication:** Required (Staff role)
 
 **Request:**
+
 - Content-Type: `multipart/form-data`
 - File field name: `file`
 - Max file size: 10MB
@@ -299,6 +325,7 @@ Column headers in first row:
 | 507f1f77... | 507f1f77... | 2025-11-16 | late | Late arrival |
 
 **Example Request (cURL):**
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/attendance/import/excel \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -306,6 +333,7 @@ curl -X POST http://localhost:5000/api/v1/attendance/import/excel \
 ```
 
 **Response (201 Created):**
+
 ```json
 {
   "success": true,
@@ -332,6 +360,7 @@ curl -X POST http://localhost:5000/api/v1/attendance/import/excel \
 ---
 
 ### 7. Export to Excel
+
 **GET** `/api/attendance/export/excel`
 
 Export attendance records to an Excel file.
@@ -339,6 +368,7 @@ Export attendance records to an Excel file.
 **Authentication:** Required
 
 **Query Parameters:**
+
 - `startDate` (optional): Start date for filtering
 - `endDate` (optional): End date for filtering
 - `studentId` (optional): Filter by student
@@ -346,11 +376,13 @@ Export attendance records to an Excel file.
 - `status` (optional): Filter by status
 
 **Example Request:**
+
 ```
 GET /api/attendance/export/excel?subjectId=507f1f77bcf86cd799439012&startDate=2025-11-01&endDate=2025-11-16
 ```
 
 **Response:**
+
 - Content-Type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
 - Content-Disposition: `attachment; filename=attendance-{timestamp}.xlsx`
 - Body: Excel file binary data
@@ -365,11 +397,13 @@ GET /api/attendance/export/excel?subjectId=507f1f77bcf86cd799439012&startDate=20
 ## 📌 Existing Endpoints
 
 ### 8. Get Attendance by Date Range
+
 **GET** `/api/attendance/range`
 
 Retrieve attendance records within a date range.
 
 **Query Parameters:**
+
 - `startDate` (required): Start date
 - `endDate` (required): End date
 - `studentId` (optional): Filter by student
@@ -380,55 +414,67 @@ Retrieve attendance records within a date range.
 ---
 
 ### 9. Get Student Attendance
+
 **GET** `/api/attendance/student/:studentId`
 
 Get all attendance records for a specific student.
 
 **URL Parameters:**
+
 - `studentId`: Student's MongoDB ObjectId
 
 **Query Parameters:**
+
 - `subjectId`, `startDate`, `endDate`, `page`, `limit`
 
 ---
 
 ### 10. Get Subject Attendance
+
 **GET** `/api/attendance/subject/:subjectId`
 
 Get all attendance records for a specific subject.
 
 **URL Parameters:**
+
 - `subjectId`: Subject's MongoDB ObjectId
 
 **Query Parameters:**
+
 - `date`, `status`, `page`, `limit`
 
 ---
 
 ### 11. Get Student Attendance Summary
+
 **GET** `/api/attendance/student/:studentId/summary`
 
 Get attendance statistics for a student.
 
 **URL Parameters:**
+
 - `studentId`: Student's MongoDB ObjectId
 
 **Query Parameters:**
+
 - `subjectId` (optional): Filter by subject
 
 ---
 
 ### 12. Get Today's Attendance
+
 **GET** `/api/attendance/subject/:subjectId/today`
 
 Get today's attendance for a subject.
 
 **URL Parameters:**
+
 - `subjectId`: Subject's MongoDB ObjectId
 
 ---
 
 ### 13. Update Attendance
+
 **PUT** `/api/attendance/:id`
 
 Update an existing attendance record.
@@ -436,12 +482,15 @@ Update an existing attendance record.
 **Authentication:** Required (Staff role)
 
 **URL Parameters:**
+
 - `id`: Attendance record ID
 
 **Request Body:**
+
 ```json
 {
   "status": "excused",
+  "timeSlot": "arrival",
   "remarks": "Doctor's appointment"
 }
 ```
@@ -449,6 +498,7 @@ Update an existing attendance record.
 ---
 
 ### 14. Delete Attendance
+
 **DELETE** `/api/attendance/:id`
 
 Delete an attendance record.
@@ -456,6 +506,7 @@ Delete an attendance record.
 **Authentication:** Required (Admin role)
 
 **URL Parameters:**
+
 - `id`: Attendance record ID
 
 ---
@@ -469,6 +520,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 ### Role Requirements:
+
 - **GET requests**: Any authenticated user
 - **POST/PUT requests**: Staff or Admin role
 - **DELETE requests**: Admin role only
@@ -478,6 +530,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ## ⚠️ Error Responses
 
 ### 400 Bad Request
+
 ```json
 {
   "success": false,
@@ -492,6 +545,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 ### 401 Unauthorized
+
 ```json
 {
   "success": false,
@@ -500,6 +554,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 ### 404 Not Found
+
 ```json
 {
   "success": false,
@@ -508,14 +563,19 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ```
 
 ### 409 Conflict
+
 ```json
 {
   "success": false,
-  "message": "Attendance already exists for this student and date"
+  "message": "Attendance already exists for this student and date",
+  "data": {
+    /* existing attendance record returned for frontend to open edit modal */
+  }
 }
 ```
 
 ### 500 Internal Server Error
+
 ```json
 {
   "success": false,
@@ -529,6 +589,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 ## 📊 Status Values
 
 Valid attendance status values:
+
 - `present` - Student was present
 - `absent` - Student was absent
 - `late` - Student arrived late
@@ -561,11 +622,13 @@ node scripts/test-attendance-endpoints.js
 ## 🔄 Integration with Frontend
 
 The frontend attendance features expect these endpoints to be available at:
+
 ```
 BASE_URL/api/v1/attendance/*
 ```
 
 Make sure your `.env` file has:
+
 ```env
 PORT=5000
 MONGODB_URI=your_mongodb_connection_string

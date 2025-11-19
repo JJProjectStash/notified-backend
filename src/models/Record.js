@@ -2,7 +2,7 @@
  * Record Model
  * Mongoose schema for system activity records/audit logs
  * Based on the JavaFX RecordEntry model
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -47,12 +47,7 @@ recordSchema.index({ subject: 1 });
 recordSchema.index({ createdAt: -1 });
 
 // Static method to create a student-related record
-recordSchema.statics.createStudentRecord = function (
-  studentId,
-  recordType,
-  recordData,
-  userId
-) {
+recordSchema.statics.createStudentRecord = function (studentId, recordType, recordData, userId) {
   return this.create({
     student: studentId,
     recordType,
@@ -62,12 +57,7 @@ recordSchema.statics.createStudentRecord = function (
 };
 
 // Static method to create a subject-related record
-recordSchema.statics.createSubjectRecord = function (
-  subjectId,
-  recordType,
-  recordData,
-  userId
-) {
+recordSchema.statics.createSubjectRecord = function (subjectId, recordType, recordData, userId) {
   return this.create({
     subject: subjectId,
     recordType,
@@ -77,12 +67,7 @@ recordSchema.statics.createSubjectRecord = function (
 };
 
 // Static method to create an enrollment record
-recordSchema.statics.createEnrollmentRecord = function (
-  studentId,
-  subjectId,
-  recordData,
-  userId
-) {
+recordSchema.statics.createEnrollmentRecord = function (studentId, subjectId, recordData, userId) {
   return this.create({
     student: studentId,
     subject: subjectId,

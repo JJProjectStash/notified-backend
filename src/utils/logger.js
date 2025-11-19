@@ -1,7 +1,7 @@
 /**
  * Logger Configuration
  * Winston logger for application-wide logging
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -40,7 +40,7 @@ const format = winston.format.combine(
 const transports = [
   // Console transport
   new winston.transports.Console(),
-  
+
   // File transport for errors
   new winston.transports.File({
     filename: path.join('logs', 'error.log'),
@@ -48,7 +48,7 @@ const transports = [
     maxsize: 5242880, // 5MB
     maxFiles: 5,
   }),
-  
+
   // File transport for all logs
   new winston.transports.File({
     filename: path.join('logs', 'combined.log'),

@@ -1,7 +1,7 @@
 /**
  * Enrollment Model
  * Mongoose schema for student-subject enrollment
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

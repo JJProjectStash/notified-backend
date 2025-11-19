@@ -18,11 +18,7 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   const result = await userService.getAllUsers(filters, { page, limit });
 
   res.json(
-    ApiResponse.paginated(
-      result.users,
-      result.pagination,
-      SUCCESS_MESSAGES.USERS_RETRIEVED
-    )
+    ApiResponse.paginated(result.users, result.pagination, SUCCESS_MESSAGES.USERS_RETRIEVED)
   );
 });
 
@@ -91,11 +87,7 @@ exports.searchUsers = asyncHandler(async (req, res) => {
   const result = await userService.searchUsers(q, { page, limit });
 
   res.json(
-    ApiResponse.paginated(
-      result.users,
-      result.pagination,
-      SUCCESS_MESSAGES.USERS_RETRIEVED
-    )
+    ApiResponse.paginated(result.users, result.pagination, SUCCESS_MESSAGES.USERS_RETRIEVED)
   );
 });
 

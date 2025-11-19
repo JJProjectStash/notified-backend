@@ -1,7 +1,7 @@
 /**
  * Authentication Middleware
  * Protects routes and verifies JWT tokens
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

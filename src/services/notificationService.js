@@ -1,6 +1,6 @@
 const { Notification, User } = require('../models');
 const { ERROR_MESSAGES, NOTIFICATION_TYPES } = require('../config/constants');
-const { ValidationUtil } = require('../utils/validationUtil');
+const ValidationUtil = require('../utils/validationUtil');
 const logger = require('../utils/logger');
 
 /**

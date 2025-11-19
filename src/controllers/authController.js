@@ -1,7 +1,7 @@
 /**
  * Authentication Controller
  * Handles HTTP requests for authentication
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -27,10 +27,14 @@ const register = asyncHandler(async (req, res) => {
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
 
-  ApiResponse.created(res, {
-    user: result.user,
-    accessToken: result.tokens.accessToken,
-  }, SUCCESS_MESSAGES.USER_CREATED);
+  ApiResponse.created(
+    res,
+    {
+      user: result.user,
+      accessToken: result.tokens.accessToken,
+    },
+    SUCCESS_MESSAGES.USER_CREATED
+  );
 });
 
 /**
@@ -50,10 +54,14 @@ const login = asyncHandler(async (req, res) => {
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
 
-  ApiResponse.success(res, {
-    user: result.user,
-    accessToken: result.tokens.accessToken,
-  }, SUCCESS_MESSAGES.LOGIN_SUCCESS);
+  ApiResponse.success(
+    res,
+    {
+      user: result.user,
+      accessToken: result.tokens.accessToken,
+    },
+    SUCCESS_MESSAGES.LOGIN_SUCCESS
+  );
 });
 
 /**

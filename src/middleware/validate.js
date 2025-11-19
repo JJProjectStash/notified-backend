@@ -1,7 +1,7 @@
 /**
  * Request Validation Middleware
  * Express-validator based validation middleware
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

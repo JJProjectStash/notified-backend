@@ -1,7 +1,7 @@
 /**
  * Database Configuration
  * Handles MongoDB connection with Mongoose
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

@@ -70,12 +70,14 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // File Upload Middleware
-app.use(fileUpload({
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max file size
-  abortOnLimit: true,
-  useTempFiles: true,
-  tempFileDir: '/tmp/',
-}));
+app.use(
+  fileUpload({
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max file size
+    abortOnLimit: true,
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+  })
+);
 
 // Data Sanitization against NoSQL Injection
 app.use(mongoSanitize());

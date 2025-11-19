@@ -99,10 +99,22 @@ class ValidationUtil {
    * @param {Number} limit - Items per page
    * @returns {Object} { page: Number, limit: Number }
    */
-  static validatePagination(page, limit) {
-    const validPage = Math.max(1, parseInt(page, 10) || 1);
+  static validatePagination(pageOrPagination, limit) {
+    // Accept either (page, limit) or (paginationObject)
+    let pageVal;
+    let limitVal;
+
+    if (typeof pageOrPagination === 'object' && pageOrPagination !== null) {
+      pageVal = pageOrPagination.page;
+      limitVal = pageOrPagination.limit;
+    } else {
+      pageVal = pageOrPagination;
+      limitVal = limit;
+    }
+
+    const validPage = Math.max(1, parseInt(pageVal, 10) || 1);
     const validLimit = Math.min(
-      Math.max(1, parseInt(limit, 10) || 10),
+      Math.max(1, parseInt(limitVal, 10) || 10),
       100 // Max 100 items per page
     );
 

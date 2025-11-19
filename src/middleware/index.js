@@ -1,7 +1,7 @@
 /**
  * Middleware Index
  * Exports all middleware functions
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

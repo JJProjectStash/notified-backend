@@ -1,8 +1,13 @@
 const ExcelJS = require('exceljs');
 const fs = require('fs').promises;
 const { Attendance, Student, Subject, Record, Notification } = require('../models');
-const { RECORD_TYPES, ATTENDANCE_STATUS, ERROR_MESSAGES, NOTIFICATION_TYPES } = require('../config/constants');
-const { ValidationUtil } = require('../utils/validationUtil');
+const {
+  RECORD_TYPES,
+  ATTENDANCE_STATUS,
+  ERROR_MESSAGES,
+  NOTIFICATION_TYPES,
+} = require('../config/constants');
+const ValidationUtil = require('../utils/validationUtil');
 const { EmailUtil } = require('../utils/emailUtil');
 const logger = require('../utils/logger');
 
@@ -64,8 +69,17 @@ class AttendanceService {
       const existingAttendance = await Attendance.findOne(attendanceQuery);
 
       if (existingAttendance) {
+        // Populate existing attendance for returning to client
+        const populatedExisting = await Attendance.findById(existingAttendance._id)
+          .populate('student', 'studentNumber firstName lastName')
+          .populate('subject', 'subjectCode subjectName')
+          .populate('markedBy', 'name email')
+          .lean();
+
         const error = new Error(ERROR_MESSAGES.ATTENDANCE_EXISTS);
         error.statusCode = 409;
+        // Attach the existing record so the controller / error middleware can include it
+        error.data = populatedExisting;
         throw error;
       }
 
@@ -75,6 +89,7 @@ class AttendanceService {
         subject: subjectId,
         date: attendanceDate,
         status,
+        timeSlot: attendanceData.timeSlot,
         remarks,
         markedBy: userId,
       });
@@ -156,6 +171,7 @@ class AttendanceService {
       if (filters.studentId) query.student = filters.studentId;
       if (filters.subjectId) query.subject = filters.subjectId;
       if (filters.status) query.status = filters.status;
+      if (filters.timeSlot) query.timeSlot = filters.timeSlot;
 
       const [records, total] = await Promise.all([
         Attendance.find(query)
@@ -349,8 +365,22 @@ class AttendanceService {
 
       const oldStatus = attendance.status;
 
+      // Add audit information and history entry
+      const historyEntry = {
+        status: attendance.status,
+        timeSlot: attendance.timeSlot,
+        remarks: attendance.remarks,
+        editedAt: new Date(),
+        editedBy: userId,
+      };
+
       // Update attendance
       Object.assign(attendance, updateData);
+      attendance.editedAt = new Date();
+      attendance.editedBy = userId;
+      // Initialize history if needed
+      if (!Array.isArray(attendance.history)) attendance.history = [];
+      attendance.history.push(historyEntry);
       await attendance.save();
 
       // Create activity record
@@ -460,7 +490,7 @@ class AttendanceService {
             ...record,
             date: record.date || new Date(),
           };
-          
+
           const attendance = await this.markAttendance(attendanceData, userId);
           results.successful.push({
             studentId: record.studentId,
@@ -474,7 +504,9 @@ class AttendanceService {
         }
       }
 
-      logger.info(`Bulk attendance marked: ${results.successful.length}/${results.total} successful`);
+      logger.info(
+        `Bulk attendance marked: ${results.successful.length}/${results.total} successful`
+      );
       return results;
     } catch (error) {
       logger.error('Error in bulkMarkAttendance:', error);
@@ -498,11 +530,19 @@ class AttendanceService {
       if (filters.studentId) query.student = filters.studentId;
       if (filters.subjectId) query.subject = filters.subjectId;
       if (filters.status) query.status = filters.status;
-      
+
       if (filters.startDate || filters.endDate) {
         query.date = {};
-        if (filters.startDate) query.date.$gte = new Date(filters.startDate);
-        if (filters.endDate) query.date.$lte = new Date(filters.endDate);
+        if (filters.startDate) {
+          const start = new Date(filters.startDate);
+          start.setHours(0, 0, 0, 0);
+          query.date.$gte = start;
+        }
+        if (filters.endDate) {
+          const end = new Date(filters.endDate);
+          end.setHours(23, 59, 59, 999);
+          query.date.$lte = end;
+        }
       }
 
       const [records, total] = await Promise.all([
@@ -576,9 +616,8 @@ class AttendanceService {
         formattedSummary[item._id] = item.count;
       });
 
-      formattedSummary.attendanceRate = total > 0 
-        ? ((formattedSummary.present / total) * 100).toFixed(2)
-        : 0;
+      formattedSummary.attendanceRate =
+        total > 0 ? ((formattedSummary.present / total) * 100).toFixed(2) : 0;
 
       return formattedSummary;
     } catch (error) {
@@ -597,7 +636,7 @@ class AttendanceService {
       const query = {};
 
       if (filters.subjectId) query.subject = filters.subjectId;
-      
+
       if (filters.startDate || filters.endDate) {
         query.date = {};
         if (filters.startDate) query.date.$gte = new Date(filters.startDate);
@@ -646,10 +685,7 @@ class AttendanceService {
             late: 1,
             excused: 1,
             attendanceRate: {
-              $multiply: [
-                { $divide: ['$present', '$totalDays'] },
-                100,
-              ],
+              $multiply: [{ $divide: ['$present', '$totalDays'] }, 100],
             },
           },
         },
@@ -765,7 +801,7 @@ class AttendanceService {
       if (filters.studentId) query.student = filters.studentId;
       if (filters.subjectId) query.subject = filters.subjectId;
       if (filters.status) query.status = filters.status;
-      
+
       if (filters.startDate || filters.endDate) {
         query.date = {};
         if (filters.startDate) query.date.$gte = new Date(filters.startDate);
@@ -807,7 +843,7 @@ class AttendanceService {
       records.forEach((record) => {
         worksheet.addRow({
           studentNumber: record.student?.studentNumber || 'N/A',
-          studentName: record.student 
+          studentName: record.student
             ? `${record.student.firstName} ${record.student.lastName}`
             : 'N/A',
           section: record.student?.section || 'N/A',

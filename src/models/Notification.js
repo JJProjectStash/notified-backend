@@ -1,7 +1,7 @@
 /**
  * Notification Model
  * Mongoose schema for notification management
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

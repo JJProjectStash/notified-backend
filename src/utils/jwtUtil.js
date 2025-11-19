@@ -1,7 +1,7 @@
 /**
  * JWT Utility
  * Functions for generating and verifying JWT tokens
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

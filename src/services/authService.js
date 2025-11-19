@@ -1,7 +1,7 @@
 /**
  * Authentication Service
  * Business logic for user authentication
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

@@ -1,7 +1,7 @@
 /**
  * Error Handling Middleware
  * Centralized error handler for the application
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -60,6 +60,7 @@ const sendErrorDev = (err, res) => {
     error: err,
     message: err.message,
     stack: err.stack,
+    data: err.data || null,
     timestamp: new Date().toISOString(),
   });
 };
@@ -68,13 +69,15 @@ const sendErrorDev = (err, res) => {
  * Send error in production environment
  */
 const sendErrorProd = (err, res) => {
-  // Operational, trusted error: send message to client
-  if (err.isOperational) {
-    return res.status(err.statusCode).json({
+  // If client error (4xx) send message + optional data
+  if (err.statusCode && err.statusCode >= 400 && err.statusCode < 500) {
+    const payload = {
       success: false,
       message: err.message,
       timestamp: new Date().toISOString(),
-    });
+    };
+    if (err.data) payload.data = err.data;
+    return res.status(err.statusCode).json(payload);
   }
 
   // Programming or unknown error: don't leak error details

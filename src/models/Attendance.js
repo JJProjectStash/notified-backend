@@ -2,7 +2,7 @@
  * Attendance Model
  * Mongoose schema for attendance tracking
  * Based on the JavaFX attendance and records system
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */
@@ -32,11 +32,31 @@ const attendanceSchema = new mongoose.Schema(
       required: [true, 'Attendance status is required'],
       default: ATTENDANCE_STATUS.PRESENT,
     },
+    timeSlot: {
+      type: String,
+      enum: ['arrival', 'departure'],
+    },
     remarks: {
       type: String,
       trim: true,
       maxlength: [500, 'Remarks cannot exceed 500 characters'],
     },
+    editedAt: {
+      type: Date,
+    },
+    editedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    history: [
+      {
+        status: String,
+        timeSlot: String,
+        remarks: String,
+        editedAt: Date,
+        editedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      },
+    ],
     markedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -57,9 +77,9 @@ attendanceSchema.index({ status: 1 });
 // Prevent duplicate attendance for same student, subject, and date
 attendanceSchema.index(
   { student: 1, subject: 1, date: 1 },
-  { 
+  {
     unique: true,
-    partialFilterExpression: { subject: { $exists: true } }
+    partialFilterExpression: { subject: { $exists: true } },
   }
 );
 

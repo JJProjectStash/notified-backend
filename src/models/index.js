@@ -1,7 +1,7 @@
 /**
  * Model Index
  * Exports all Mongoose models
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

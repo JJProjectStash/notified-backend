@@ -30,6 +30,7 @@ exports.markAttendance = asyncHandler(async (req, res) => {
 
   normalized.status = req.body.status;
   normalized.remarks = req.body.remarks;
+  normalized.timeSlot = req.body.timeSlot;
 
   const attendance = await attendanceService.markAttendance(normalized, req.user.id);
   return ApiResponse.created(res, attendance, SUCCESS_MESSAGES.ATTENDANCE_MARKED);
@@ -41,12 +42,20 @@ exports.markAttendance = asyncHandler(async (req, res) => {
  * @access Private
  */
 exports.getAttendanceByDateRange = asyncHandler(async (req, res) => {
-  const { startDate, endDate, studentId, subjectId, status, page, limit } = req.query;
+  // Support both flat query params and nested `dateRange[startDate]` / `dateRange[startDate]`
+  const { studentId, subjectId, status, page, limit, timeSlot } = req.query;
+  let startDate = req.query.startDate;
+  let endDate = req.query.endDate;
+  // dateRange may arrive as nested fields
+  if (!startDate && req.query.dateRange) startDate = req.query.dateRange.startDate;
+  if (!endDate && req.query.dateRange) endDate = req.query.dateRange.endDate;
+  // Support query strings like dateRange[startDate]
+  if (!startDate && req.query['dateRange[startDate]'])
+    startDate = req.query['dateRange[startDate]'];
+  if (!endDate && req.query['dateRange[endDate]']) endDate = req.query['dateRange[endDate]'];
 
   if (!startDate || !endDate) {
-    return res.status(400).json(
-      ApiResponse.error('Start date and end date are required')
-    );
+    return res.status(400).json(ApiResponse.error('Start date and end date are required'));
   }
 
   const filters = {};
@@ -54,19 +63,13 @@ exports.getAttendanceByDateRange = asyncHandler(async (req, res) => {
   if (subjectId) filters.subjectId = subjectId;
   if (status) filters.status = status;
 
-  const result = await attendanceService.getAttendanceByDateRange(
-    startDate,
-    endDate,
-    filters,
-    { page, limit }
-  );
+  const result = await attendanceService.getAttendanceByDateRange(startDate, endDate, filters, {
+    page,
+    limit,
+  });
 
   res.json(
-    ApiResponse.paginated(
-      result.records,
-      result.pagination,
-      SUCCESS_MESSAGES.ATTENDANCE_RETRIEVED
-    )
+    ApiResponse.paginated(result.records, result.pagination, SUCCESS_MESSAGES.ATTENDANCE_RETRIEVED)
   );
 });
 
@@ -86,11 +89,7 @@ exports.getStudentAttendance = asyncHandler(async (req, res) => {
     filters.endDate = endDate;
   }
 
-  const result = await attendanceService.getStudentAttendance(
-    studentId,
-    filters,
-    { page, limit }
-  );
+  const result = await attendanceService.getStudentAttendance(studentId, filters, { page, limit });
 
   res.json(ApiResponse.success(result, SUCCESS_MESSAGES.ATTENDANCE_RETRIEVED));
 });
@@ -108,11 +107,7 @@ exports.getSubjectAttendance = asyncHandler(async (req, res) => {
   if (date) filters.date = date;
   if (status) filters.status = status;
 
-  const result = await attendanceService.getSubjectAttendance(
-    subjectId,
-    filters,
-    { page, limit }
-  );
+  const result = await attendanceService.getSubjectAttendance(subjectId, filters, { page, limit });
 
   res.json(ApiResponse.success(result, SUCCESS_MESSAGES.ATTENDANCE_RETRIEVED));
 });
@@ -137,11 +132,7 @@ exports.getAttendanceSummary = asyncHandler(async (req, res) => {
  * @access Private (Staff)
  */
 exports.updateAttendance = asyncHandler(async (req, res) => {
-  const attendance = await attendanceService.updateAttendance(
-    req.params.id,
-    req.body,
-    req.user.id
-  );
+  const attendance = await attendanceService.updateAttendance(req.params.id, req.body, req.user.id);
   res.json(ApiResponse.success(attendance, SUCCESS_MESSAGES.ATTENDANCE_UPDATED));
 });
 
@@ -174,9 +165,7 @@ exports.getTodayAttendance = asyncHandler(async (req, res) => {
 exports.bulkMarkAttendance = asyncHandler(async (req, res) => {
   const { records } = req.body;
   const result = await attendanceService.bulkMarkAttendance(records, req.user.id);
-  res.status(201).json(
-    ApiResponse.success(result, 'Bulk attendance marked successfully')
-  );
+  res.status(201).json(ApiResponse.success(result, 'Bulk attendance marked successfully'));
 });
 
 /**
@@ -193,11 +182,9 @@ exports.getAttendanceRecords = asyncHandler(async (req, res) => {
   if (status) filters.status = status;
   if (startDate) filters.startDate = startDate;
   if (endDate) filters.endDate = endDate;
+  if (timeSlot) filters.timeSlot = timeSlot;
 
-  const result = await attendanceService.getAttendanceRecords(
-    filters,
-    { page, limit }
-  );
+  const result = await attendanceService.getAttendanceRecords(filters, { page, limit });
 
   res.json(
     ApiResponse.paginated(
@@ -216,13 +203,15 @@ exports.getAttendanceRecords = asyncHandler(async (req, res) => {
 exports.getDailySummary = asyncHandler(async (req, res) => {
   const { date } = req.params;
   const { subjectId } = req.query;
-  
+
   const summary = await attendanceService.getDailySummary(date, subjectId);
 
   // Debugging log — log the summary object to help trace `success` undefined error
   // This will show up in the server logs when the endpoint is hit
   try {
-    logger.info(`Daily summary for ${date} (${subjectId || 'all subjects'}): ${JSON.stringify(summary)}`);
+    logger.info(
+      `Daily summary for ${date} (${subjectId || 'all subjects'}): ${JSON.stringify(summary)}`
+    );
   } catch (logError) {
     logger.error('Failed to stringify daily summary for logging:', logError);
   }
@@ -237,7 +226,7 @@ exports.getDailySummary = asyncHandler(async (req, res) => {
  */
 exports.getStudentsSummary = asyncHandler(async (req, res) => {
   const { subjectId, startDate, endDate } = req.query;
-  
+
   const filters = {};
   if (subjectId) filters.subjectId = subjectId;
   if (startDate) filters.startDate = startDate;
@@ -254,19 +243,15 @@ exports.getStudentsSummary = asyncHandler(async (req, res) => {
  */
 exports.importFromExcel = asyncHandler(async (req, res) => {
   const { files } = req;
-  
+
   if (!files || !files.file) {
-    return res.status(400).json(
-      ApiResponse.error('No file uploaded')
-    );
+    return res.status(400).json(ApiResponse.error('No file uploaded'));
   }
 
   const { file } = files;
   const result = await attendanceService.importFromExcel(file, req.user.id);
-  
-  res.status(201).json(
-    ApiResponse.success(result, 'Attendance imported successfully')
-  );
+
+  res.status(201).json(ApiResponse.success(result, 'Attendance imported successfully'));
 });
 
 /**
@@ -290,9 +275,6 @@ exports.exportToExcel = asyncHandler(async (req, res) => {
     'Content-Type',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   );
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename=attendance-${Date.now()}.xlsx`
-  );
+  res.setHeader('Content-Disposition', `attachment; filename=attendance-${Date.now()}.xlsx`);
   res.send(buffer);
 });

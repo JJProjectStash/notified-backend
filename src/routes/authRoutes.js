@@ -1,6 +1,6 @@
 /**
  * Authentication Routes
- * 
+ *
  * @author Notified Development Team
  * @version 1.0.0
  */

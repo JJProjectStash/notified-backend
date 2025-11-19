@@ -1,6 +1,6 @@
 const { User, Record } = require('../models');
 const { ROLES, RECORD_TYPES, ERROR_MESSAGES } = require('../config/constants');
-const { ValidationUtil } = require('../utils/validationUtil');
+const ValidationUtil = require('../utils/validationUtil');
 const { EmailUtil } = require('../utils/emailUtil');
 const logger = require('../utils/logger');
 
@@ -342,19 +342,11 @@ class UserService {
 
       const searchRegex = new RegExp(searchTerm, 'i');
       const query = {
-        $or: [
-          { name: searchRegex },
-          { email: searchRegex },
-        ],
+        $or: [{ name: searchRegex }, { email: searchRegex }],
       };
 
       const [users, total] = await Promise.all([
-        User.find(query)
-          .select('-refreshToken')
-          .sort({ name: 1 })
-          .skip(skip)
-          .limit(limit)
-          .lean(),
+        User.find(query).select('-refreshToken').sort({ name: 1 }).skip(skip).limit(limit).lean(),
         User.countDocuments(query),
       ]);
 
