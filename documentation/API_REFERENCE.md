@@ -1,12 +1,15 @@
 # Notified Backend API - Complete Endpoint Reference
 
 ## 📌 Base URL
+
 ```
 http://localhost:5000/api/v1
 ```
 
 ## 🔐 Authentication
+
 All endpoints except `/auth/register` and `/auth/login` require authentication via JWT token in the Authorization header:
+
 ```
 Authorization: Bearer <your-jwt-token>
 ```
@@ -17,32 +20,33 @@ Authorization: Bearer <your-jwt-token>
 
 ### 1. Authentication (`/api/v1/auth`)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| POST | `/register` | Public | Register new user |
-| POST | `/login` | Public | User login |
-| POST | `/logout` | Private | User logout |
-| POST | `/refresh-token` | Public | Refresh access token |
-| GET | `/profile` | Private | Get current user profile |
-| PUT | `/profile` | Private | Update user profile |
-| PUT | `/change-password` | Private | Change password |
+| Method | Endpoint           | Access  | Description              |
+| ------ | ------------------ | ------- | ------------------------ |
+| POST   | `/register`        | Public  | Register new user        |
+| POST   | `/login`           | Public  | User login               |
+| POST   | `/logout`          | Private | User logout              |
+| POST   | `/refresh-token`   | Public  | Refresh access token     |
+| GET    | `/profile`         | Private | Get current user profile |
+| PUT    | `/profile`         | Private | Update user profile      |
+| PUT    | `/change-password` | Private | Change password          |
 
 ---
 
 ### 2. Students (`/api/v1/students`)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/` | Private | Get all students (paginated, searchable) |
-| GET | `/search` | Private | Search students |
-| GET | `/generate/student-number` | Private | Generate next student number |
-| GET | `/number/:studentNumber` | Private | Get student by student number |
-| GET | `/:id` | Private | Get student by ID |
-| POST | `/` | Staff | Create new student |
-| PUT | `/:id` | Staff | Update student |
-| DELETE | `/:id` | Admin | Delete student |
+| Method | Endpoint                   | Access  | Description                              |
+| ------ | -------------------------- | ------- | ---------------------------------------- |
+| GET    | `/`                        | Private | Get all students (paginated, searchable) |
+| GET    | `/search`                  | Private | Search students                          |
+| GET    | `/generate/student-number` | Private | Generate next student number             |
+| GET    | `/number/:studentNumber`   | Private | Get student by student number            |
+| GET    | `/:id`                     | Private | Get student by ID                        |
+| POST   | `/`                        | Staff   | Create new student                       |
+| PUT    | `/:id`                     | Staff   | Update student                           |
+| DELETE | `/:id`                     | Admin   | Delete student                           |
 
 **Query Parameters for GET /**:
+
 - `page` (number): Page number (default: 1)
 - `limit` (number): Items per page (default: 10)
 - `search` (string): Search term
@@ -53,19 +57,20 @@ Authorization: Bearer <your-jwt-token>
 
 ### 3. Subjects (`/api/v1/subjects`)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/` | Private | Get all subjects (paginated) |
-| GET | `/search` | Private | Search subjects |
-| GET | `/code/:subjectCode` | Private | Get subject by code |
-| GET | `/year/:yearLevel/section/:section` | Private | Get subjects by year and section |
-| GET | `/:id` | Private | Get subject by ID |
-| GET | `/:id/enrollments` | Private | Get subject enrollments |
-| POST | `/` | Staff | Create new subject |
-| PUT | `/:id` | Staff | Update subject |
-| DELETE | `/:id` | Admin | Delete subject |
+| Method | Endpoint                            | Access  | Description                      |
+| ------ | ----------------------------------- | ------- | -------------------------------- |
+| GET    | `/`                                 | Private | Get all subjects (paginated)     |
+| GET    | `/search`                           | Private | Search subjects                  |
+| GET    | `/code/:subjectCode`                | Private | Get subject by code              |
+| GET    | `/year/:yearLevel/section/:section` | Private | Get subjects by year and section |
+| GET    | `/:id`                              | Private | Get subject by ID                |
+| GET    | `/:id/enrollments`                  | Private | Get subject enrollments          |
+| POST   | `/`                                 | Staff   | Create new subject               |
+| PUT    | `/:id`                              | Staff   | Update subject                   |
+| DELETE | `/:id`                              | Admin   | Delete subject                   |
 
 **Query Parameters for GET /**:
+
 - `page` (number): Page number
 - `limit` (number): Items per page
 - `yearLevel` (number): Filter by year level (1-12)
@@ -76,23 +81,25 @@ Authorization: Bearer <your-jwt-token>
 
 ### 4. Attendance (`/api/v1/attendance`)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/range` | Private | Get attendance by date range |
-| GET | `/student/:studentId` | Private | Get student attendance |
-| GET | `/student/:studentId/summary` | Private | Get attendance summary for student |
-| GET | `/subject/:subjectId` | Private | Get subject attendance |
-| GET | `/subject/:subjectId/today` | Private | Get today's attendance for subject |
-| POST | `/` | Staff | Mark attendance |
-| PUT | `/:id` | Staff | Update attendance record |
-| DELETE | `/:id` | Admin | Delete attendance record |
+| Method | Endpoint                      | Access  | Description                        |
+| ------ | ----------------------------- | ------- | ---------------------------------- |
+| GET    | `/range`                      | Private | Get attendance by date range       |
+| GET    | `/student/:studentId`         | Private | Get student attendance             |
+| GET    | `/student/:studentId/summary` | Private | Get attendance summary for student |
+| GET    | `/subject/:subjectId`         | Private | Get subject attendance             |
+| GET    | `/subject/:subjectId/today`   | Private | Get today's attendance for subject |
+| POST   | `/`                           | Staff   | Mark attendance                    |
+| PUT    | `/:id`                        | Staff   | Update attendance record           |
+| DELETE | `/:id`                        | Admin   | Delete attendance record           |
 
 **Query Parameters**:
+
 - `/range`: `startDate`, `endDate`, `studentId`, `subjectId`, `status`, `page`, `limit`
 - `/student/:studentId`: `subjectId`, `startDate`, `endDate`, `page`, `limit`
 - `/subject/:subjectId`: `date`, `status`, `page`, `limit`
 
 **Request Body for POST** (Mark Attendance):
+
 ```json
 {
   "studentId": "mongoId",
@@ -107,25 +114,27 @@ Authorization: Bearer <your-jwt-token>
 
 ### 5. Notifications (`/api/v1/notifications`)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/` | Private | Get all notifications for current user |
-| GET | `/stats` | Private | Get notification statistics |
-| GET | `/unread/count` | Private | Get unread notification count |
-| GET | `/:id` | Private | Get notification by ID |
-| POST | `/` | Staff | Create notification |
-| PUT | `/read-all` | Private | Mark all as read |
-| PUT | `/:id/read` | Private | Mark notification as read |
-| DELETE | `/read` | Private | Delete all read notifications |
-| DELETE | `/:id` | Private | Delete notification |
+| Method | Endpoint        | Access  | Description                            |
+| ------ | --------------- | ------- | -------------------------------------- |
+| GET    | `/`             | Private | Get all notifications for current user |
+| GET    | `/stats`        | Private | Get notification statistics            |
+| GET    | `/unread/count` | Private | Get unread notification count          |
+| GET    | `/:id`          | Private | Get notification by ID                 |
+| POST   | `/`             | Staff   | Create notification                    |
+| PUT    | `/read-all`     | Private | Mark all as read                       |
+| PUT    | `/:id/read`     | Private | Mark notification as read              |
+| DELETE | `/read`         | Private | Delete all read notifications          |
+| DELETE | `/:id`          | Private | Delete notification                    |
 
 **Query Parameters for GET /**:
+
 - `isRead` (boolean): Filter by read status
 - `type` (string): Filter by type
 - `priority` (string): Filter by priority
 - `page`, `limit`: Pagination
 
 **Request Body for POST**:
+
 ```json
 {
   "recipient": "userId",
@@ -141,25 +150,27 @@ Authorization: Bearer <your-jwt-token>
 
 ### 6. Records (`/api/v1/records`)
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/` | Staff | Get all records (paginated, filtered) |
-| GET | `/stats` | Staff | Get record statistics |
-| GET | `/today` | Staff | Get today's records |
-| GET | `/range` | Staff | Get records by date range |
-| GET | `/type/:recordType` | Staff | Get records by type |
-| GET | `/student/:studentId` | Private | Get student records |
-| GET | `/subject/:subjectId` | Private | Get subject records |
-| GET | `/:id` | Staff | Get record by ID |
-| DELETE | `/:id` | Admin | Delete record |
+| Method | Endpoint              | Access  | Description                           |
+| ------ | --------------------- | ------- | ------------------------------------- |
+| GET    | `/`                   | Staff   | Get all records (paginated, filtered) |
+| GET    | `/stats`              | Staff   | Get record statistics                 |
+| GET    | `/today`              | Staff   | Get today's records                   |
+| GET    | `/range`              | Staff   | Get records by date range             |
+| GET    | `/type/:recordType`   | Staff   | Get records by type                   |
+| GET    | `/student/:studentId` | Private | Get student records                   |
+| GET    | `/subject/:subjectId` | Private | Get subject records                   |
+| GET    | `/:id`                | Staff   | Get record by ID                      |
+| DELETE | `/:id`                | Admin   | Delete record                         |
 
 **Query Parameters**:
+
 - `/`: `recordType`, `studentId`, `subjectId`, `performedBy`, `startDate`, `endDate`, `page`, `limit`
 - `/range`: `startDate`, `endDate`, `page`, `limit`
 - `/student/:studentId`: `recordType`, `subjectId`, `startDate`, `endDate`, `page`, `limit`
 - `/subject/:subjectId`: `recordType`, `studentId`, `startDate`, `endDate`, `page`, `limit`
 
 **Record Types**:
+
 - `EMAIL_SENT`
 - `STUDENT_ADDED`, `STUDENT_UPDATED`, `STUDENT_DELETED`
 - `ENROLLMENT`
@@ -170,23 +181,25 @@ Authorization: Bearer <your-jwt-token>
 
 ### 7. Users (`/api/v1/users`) - Admin Only
 
-| Method | Endpoint | Access | Description |
-|--------|----------|--------|-------------|
-| GET | `/` | Admin | Get all users (paginated) |
-| GET | `/stats` | Admin | Get user statistics |
-| GET | `/search` | Admin | Search users |
-| GET | `/:id` | Admin | Get user by ID |
-| POST | `/` | Admin | Create new user |
-| PUT | `/:id` | Admin | Update user |
-| PATCH | `/:id/toggle-status` | Admin | Toggle user active status |
-| DELETE | `/:id` | Admin | Delete user (soft delete) |
+| Method | Endpoint             | Access | Description               |
+| ------ | -------------------- | ------ | ------------------------- |
+| GET    | `/`                  | Admin  | Get all users (paginated) |
+| GET    | `/stats`             | Admin  | Get user statistics       |
+| GET    | `/search`            | Admin  | Search users              |
+| GET    | `/:id`               | Admin  | Get user by ID            |
+| POST   | `/`                  | Admin  | Create new user           |
+| PUT    | `/:id`               | Admin  | Update user               |
+| PATCH  | `/:id/toggle-status` | Admin  | Toggle user active status |
+| DELETE | `/:id`               | Admin  | Delete user (soft delete) |
 
 **Query Parameters for GET /**:
+
 - `role` (string): Filter by role (superadmin, admin, staff)
 - `isActive` (boolean): Filter by active status
 - `page`, `limit`: Pagination
 
 **Request Body for POST**:
+
 ```json
 {
   "name": "User Name",
@@ -201,21 +214,26 @@ Authorization: Bearer <your-jwt-token>
 ## 🔒 Access Levels
 
 ### Public
+
 - No authentication required
 
 ### Private
+
 - Requires valid JWT token
 - Any authenticated user can access
 
 ### Staff
+
 - Requires authentication
 - User role must be `staff`, `admin`, or `superadmin`
 
 ### Admin
+
 - Requires authentication
 - User role must be `admin` or `superadmin`
 
 ### Superadmin
+
 - Requires authentication
 - User role must be `superadmin`
 
@@ -224,6 +242,7 @@ Authorization: Bearer <your-jwt-token>
 ## 📊 Common Response Formats
 
 ### Success Response
+
 ```json
 {
   "success": true,
@@ -234,6 +253,7 @@ Authorization: Bearer <your-jwt-token>
 ```
 
 ### Paginated Response
+
 ```json
 {
   "success": true,
@@ -250,6 +270,7 @@ Authorization: Bearer <your-jwt-token>
 ```
 
 ### Error Response
+
 ```json
 {
   "success": false,
@@ -264,6 +285,7 @@ Authorization: Bearer <your-jwt-token>
 ## 🚀 Example API Calls
 
 ### Register User
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/register \
   -H "Content-Type: application/json" \
@@ -275,6 +297,7 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
 ```
 
 ### Login
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/auth/login \
   -H "Content-Type: application/json" \
@@ -285,12 +308,14 @@ curl -X POST http://localhost:5000/api/v1/auth/login \
 ```
 
 ### Get All Students
+
 ```bash
 curl -X GET "http://localhost:5000/api/v1/students?page=1&limit=10" \
   -H "Authorization: Bearer <your-jwt-token>"
 ```
 
 ### Mark Attendance
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/attendance \
   -H "Authorization: Bearer <your-jwt-token>" \
@@ -304,6 +329,7 @@ curl -X POST http://localhost:5000/api/v1/attendance \
 ```
 
 ### Create Subject
+
 ```bash
 curl -X POST http://localhost:5000/api/v1/subjects \
   -H "Authorization: Bearer <your-jwt-token>" \
@@ -325,7 +351,7 @@ curl -X POST http://localhost:5000/api/v1/subjects \
 2. **Dates**: Use ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss.sssZ)
 3. **MongoDB IDs**: All IDs are MongoDB ObjectIds (24 hex characters)
 4. **Search**: Search queries are case-insensitive
-5. **Soft Delete**: Delete operations set `isActive: false` instead of removing records
+5. **Soft Delete**: Most delete operations set `isActive: false` instead of removing records. NOTE: Some resources use hard delete; for example, Student and Subject endpoints permanently remove the document when deleted (hard delete), while other modules (e.g., Users) still use soft-delete.
 6. **Activity Logging**: Most operations create audit records automatically
 7. **Email Notifications**: Sent for critical events (attendance alerts, password reset, etc.)
 
@@ -333,18 +359,18 @@ curl -X POST http://localhost:5000/api/v1/subjects \
 
 ## 🔧 Error Codes
 
-| Status Code | Meaning |
-|-------------|---------|
-| 200 | Success |
-| 201 | Created |
-| 204 | No Content |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Not Found |
-| 409 | Conflict |
-| 422 | Unprocessable Entity |
-| 500 | Internal Server Error |
+| Status Code | Meaning               |
+| ----------- | --------------------- |
+| 200         | Success               |
+| 201         | Created               |
+| 204         | No Content            |
+| 400         | Bad Request           |
+| 401         | Unauthorized          |
+| 403         | Forbidden             |
+| 404         | Not Found             |
+| 409         | Conflict              |
+| 422         | Unprocessable Entity  |
+| 500         | Internal Server Error |
 
 ---
 

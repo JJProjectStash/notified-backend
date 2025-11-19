@@ -23,7 +23,9 @@ class SubjectService {
       const query = {};
       if (filters.yearLevel) query.yearLevel = filters.yearLevel;
       if (filters.section) query.section = new RegExp(filters.section, 'i');
+      // By default only return active subjects unless explicitly asked
       if (filters.isActive !== undefined) query.isActive = filters.isActive;
+      else query.isActive = true;
 
       // Execute query with pagination
       const [subjects, total] = await Promise.all([
@@ -69,7 +71,9 @@ class SubjectService {
    */
   async getSubjectById(id) {
     try {
-      const subject = await Subject.findById(id).populate('createdBy', 'name email').lean();
+      const subject = await Subject.findOne({ _id: id, isActive: true })
+        .populate('createdBy', 'name email')
+        .lean();
 
       if (!subject) {
         const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
@@ -100,7 +104,11 @@ class SubjectService {
    */
   async getSubjectByCode(subjectCode) {
     try {
-      const subject = await Subject.findByCode(subjectCode);
+      // Only return active subjects by default
+      const subject = await Subject.findOne({
+        subjectCode: subjectCode.toUpperCase(),
+        isActive: true,
+      });
 
       if (!subject) {
         const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
@@ -185,7 +193,7 @@ class SubjectService {
    */
   async updateSubject(id, updateData, userId) {
     try {
-      const subject = await Subject.findById(id);
+      const subject = await Subject.findOne({ _id: id, isActive: true });
 
       if (!subject) {
         const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
@@ -264,9 +272,14 @@ class SubjectService {
         throw error;
       }
 
-      // Soft delete
-      subject.isActive = false;
-      await subject.save();
+      // Hard delete — only allowed if no active enrollments exist
+      const deletedSubject = await Subject.findByIdAndDelete(id);
+
+      if (!deletedSubject) {
+        const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
+        error.statusCode = 404;
+        throw error;
+      }
 
       // Create activity record
       await Record.createSubjectRecord(
@@ -276,9 +289,9 @@ class SubjectService {
         userId
       );
 
-      logger.info(`Subject deleted: ${subject.subjectCode} by user ${userId}`);
+      logger.info(`Subject deleted: ${deletedSubject.subjectCode} by user ${userId}`);
 
-      return subject.toObject();
+      return deletedSubject.toObject();
     } catch (error) {
       logger.error('Error in deleteSubject:', error);
       throw error;
@@ -306,6 +319,8 @@ class SubjectService {
           { section: searchRegex },
         ],
       };
+      // Only search active subjects
+      query.isActive = true;
 
       const [subjects, total] = await Promise.all([
         Subject.find(query)
@@ -340,7 +355,7 @@ class SubjectService {
    */
   async getSubjectsByYearAndSection(yearLevel, section) {
     try {
-      const subjects = await Subject.findByYearAndSection(yearLevel, section);
+      const subjects = await Subject.find({ yearLevel, section, isActive: true });
       return subjects;
     } catch (error) {
       logger.error('Error in getSubjectsByYearAndSection:', error);

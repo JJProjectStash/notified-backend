@@ -424,7 +424,7 @@ node scripts/test-backend-fixes.js
   - [ ] Create subject (POST /subjects)
   - [ ] Validate subject code format
   - [ ] Update subject (PUT /subjects/:id)
-  - [ ] Delete subject (DELETE /subjects/:id)
+  - [ ] Delete subject (DELETE /subjects/:id) — now uses hard delete (permanent removal)
 
 - [ ] **Records Module**
   - [ ] List records with pagination (GET /records?page=1&limit=10)
