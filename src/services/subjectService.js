@@ -241,9 +241,14 @@ class SubjectService {
         }
       }
 
+      // Handle schedules array update
+      if (updateData.schedules !== undefined) {
+        subject.schedules = updateData.schedules;
+      }
+
       // Update other fields
       Object.keys(updateData).forEach((key) => {
-        if (key !== 'schedule') {
+        if (key !== 'schedule' && key !== 'schedules') {
           subject[key] = updateData[key];
         }
       });
@@ -263,6 +268,51 @@ class SubjectService {
       return subject.toObject();
     } catch (error) {
       logger.error('Error in updateSubject:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update subject schedules (multiple schedules support)
+   * @param {String} id - Subject ID
+   * @param {Array} schedules - Array of schedule slots
+   * @param {String} userId - User ID performing update
+   * @returns {Promise<Object>} Updated subject
+   */
+  async updateSubjectSchedules(id, schedules, userId) {
+    try {
+      const subject = await Subject.findOne({ _id: id, isActive: true });
+
+      if (!subject) {
+        const error = new Error(ERROR_MESSAGES.SUBJECT_NOT_FOUND);
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // Validate schedules
+      if (!Array.isArray(schedules)) {
+        const error = new Error('Schedules must be an array');
+        error.statusCode = 400;
+        throw error;
+      }
+
+      // Update schedules
+      subject.schedules = schedules;
+      await subject.save();
+
+      // Create activity record
+      await Record.createSubjectRecord(
+        subject._id,
+        RECORD_TYPES.SUBJECT_UPDATED,
+        `Subject ${subject.subjectCode} schedules updated`,
+        userId
+      );
+
+      logger.info(`Subject schedules updated: ${subject.subjectCode} by user ${userId}`);
+
+      return subject.toObject();
+    } catch (error) {
+      logger.error('Error in updateSubjectSchedules:', error);
       throw error;
     }
   }

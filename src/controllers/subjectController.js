@@ -70,6 +70,20 @@ exports.updateSubject = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Update subject schedules
+ * @route PUT /api/v1/subjects/:id/schedules
+ * @access Private (Admin/Staff)
+ */
+exports.updateSubjectSchedules = asyncHandler(async (req, res) => {
+  const subject = await subjectService.updateSubjectSchedules(
+    req.params.id,
+    req.body.schedules,
+    req.user.id
+  );
+  res.json(ApiResponse.success(subject, 'Subject schedules updated successfully'));
+});
+
+/**
  * Delete subject
  * @route DELETE /api/v1/subjects/:id
  * @access Private (Admin)

@@ -36,6 +36,11 @@ const attendanceSchema = new mongoose.Schema(
       type: String,
       enum: ['arrival', 'departure'],
     },
+    scheduleSlot: {
+      type: String,
+      trim: true,
+      maxlength: [50, 'Schedule slot name cannot exceed 50 characters'],
+    },
     remarks: {
       type: String,
       trim: true,
@@ -52,6 +57,7 @@ const attendanceSchema = new mongoose.Schema(
       {
         status: String,
         timeSlot: String,
+        scheduleSlot: String,
         remarks: String,
         editedAt: Date,
         editedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -96,9 +102,9 @@ attendanceSchema.index({ subject: 1, date: -1 });
 attendanceSchema.index({ date: -1 });
 attendanceSchema.index({ status: 1 });
 
-// Prevent duplicate attendance for same student, subject, and date
+// Updated unique index to include scheduleSlot for multiple sessions per day
 attendanceSchema.index(
-  { student: 1, subject: 1, date: 1 },
+  { student: 1, subject: 1, date: 1, scheduleSlot: 1, timeSlot: 1 },
   {
     unique: true,
     partialFilterExpression: { subject: { $exists: true } },

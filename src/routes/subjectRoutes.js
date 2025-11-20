@@ -123,6 +123,9 @@ router.post(
 
 router.get('/:id/students/:studentId/enrolled', protect, enrollmentController.checkEnrollment);
 
+// Schedule routes
+router.put('/:id/schedules', protect, requireStaff, subjectController.updateSubjectSchedules);
+
 // Subject routes
 router.get('/search', protect, subjectController.searchSubjects);
 router.get(

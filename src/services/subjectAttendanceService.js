@@ -10,7 +10,7 @@ const emailUtil = require('../utils/emailUtil');
 
 /**
  * Subject Attendance Service
- * Handles subject-specific attendance operations
+ * Handles subject-specific attendance operations with support for multiple schedules
  */
 class SubjectAttendanceService {
   /**
@@ -21,7 +21,8 @@ class SubjectAttendanceService {
    */
   async markSubjectAttendance(attendanceData, userId) {
     try {
-      const { subjectId, studentId, date, status, remarks, timeSlot } = attendanceData;
+      const { subjectId, studentId, date, status, remarks, timeSlot, scheduleSlot } =
+        attendanceData;
 
       // Validate subject exists
       const subject = await Subject.findById(subjectId);
@@ -56,7 +57,7 @@ class SubjectAttendanceService {
       const attendanceDate = new Date(date);
       attendanceDate.setHours(0, 0, 0, 0);
 
-      // Check for existing attendance
+      // Check for existing attendance with same schedule slot and time slot
       const existingAttendance = await Attendance.findOne({
         student: studentId,
         subject: subjectId,
@@ -64,6 +65,8 @@ class SubjectAttendanceService {
           $gte: attendanceDate,
           $lt: new Date(attendanceDate.getTime() + 24 * 60 * 60 * 1000),
         },
+        scheduleSlot: scheduleSlot || null,
+        timeSlot: timeSlot || null,
       });
 
       if (existingAttendance) {
@@ -73,7 +76,11 @@ class SubjectAttendanceService {
           .populate('markedBy', 'name email')
           .lean();
 
-        const error = new Error(ERROR_MESSAGES.ATTENDANCE_EXISTS);
+        const error = new Error(
+          scheduleSlot
+            ? `Attendance already marked for ${scheduleSlot} - ${timeSlot || 'arrival'}`
+            : ERROR_MESSAGES.ATTENDANCE_EXISTS
+        );
         error.statusCode = 409;
         error.data = populatedExisting;
         throw error;
@@ -86,22 +93,24 @@ class SubjectAttendanceService {
         date: attendanceDate,
         status,
         timeSlot,
+        scheduleSlot,
         remarks,
         markedBy: userId,
       });
 
       // Create activity record
+      const scheduleInfo = scheduleSlot ? ` (${scheduleSlot})` : '';
       await Record.create({
         student: studentId,
         subject: subjectId,
         recordType: RECORD_TYPES.ATTENDANCE_MARKED,
-        recordData: `Attendance marked as ${status} for ${subject.subjectName}`,
+        recordData: `Attendance marked as ${status} for ${subject.subjectName}${scheduleInfo}`,
         performedBy: userId,
       });
 
       // Send email notifications
       try {
-        await this._sendAttendanceNotifications(student, subject, attendance);
+        await this._sendAttendanceNotifications(student, subject, attendance, scheduleSlot);
       } catch (emailError) {
         logger.error('Failed to send attendance notification email:', emailError);
         // Don't fail the attendance marking if email fails
@@ -118,7 +127,7 @@ class SubjectAttendanceService {
         .populate('markedBy', 'name email')
         .lean();
     } catch (error) {
-      logger.error('Error in markSubjectAttendance:', error);
+      logger.error('Error in markSubjectAttendance:', error.message);
       throw error;
     }
   }
@@ -127,11 +136,12 @@ class SubjectAttendanceService {
    * Send attendance notifications to student and guardian
    * @private
    */
-  async _sendAttendanceNotifications(student, subject, attendance) {
+  async _sendAttendanceNotifications(student, subject, attendance, scheduleSlot) {
+    const scheduleInfo = scheduleSlot ? ` - ${scheduleSlot}` : '';
     const attendanceData = {
       date: attendance.date,
       status: attendance.status,
-      subject: `${subject.subjectCode} - ${subject.subjectName}`,
+      subject: `${subject.subjectCode} - ${subject.subjectName}${scheduleInfo}`,
       remarks: attendance.remarks,
     };
 
@@ -199,6 +209,7 @@ class SubjectAttendanceService {
               status: data.status,
               remarks: data.remarks,
               timeSlot: data.timeSlot,
+              scheduleSlot: data.scheduleSlot,
             },
             userId
           );
@@ -230,9 +241,10 @@ class SubjectAttendanceService {
    * Get attendance records for a subject on a specific date
    * @param {String} subjectId - Subject ID
    * @param {String} date - Date string
+   * @param {String} scheduleSlot - Optional schedule slot filter
    * @returns {Promise<Array>} Attendance records
    */
-  async getSubjectAttendanceByDate(subjectId, date) {
+  async getSubjectAttendanceByDate(subjectId, date, scheduleSlot = null) {
     try {
       const subject = await Subject.findById(subjectId);
       if (!subject) {
@@ -244,13 +256,19 @@ class SubjectAttendanceService {
       const targetDate = new Date(date);
       targetDate.setHours(0, 0, 0, 0);
 
-      const records = await Attendance.find({
+      const query = {
         subject: subjectId,
         date: {
           $gte: targetDate,
           $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
         },
-      })
+      };
+
+      if (scheduleSlot) {
+        query.scheduleSlot = scheduleSlot;
+      }
+
+      const records = await Attendance.find(query)
         .populate('student', 'studentNumber firstName lastName email section guardianEmail')
         .populate('markedBy', 'name email')
         .sort({ 'student.studentNumber': 1 })

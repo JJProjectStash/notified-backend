@@ -9,8 +9,14 @@
 
 const mongoose = require('mongoose');
 
-const scheduleSchema = new mongoose.Schema(
+const scheduleSlotSchema = new mongoose.Schema(
   {
+    slotName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: [50, 'Slot name cannot exceed 50 characters'],
+    },
     days: {
       type: [String],
       enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
@@ -18,10 +24,12 @@ const scheduleSchema = new mongoose.Schema(
     },
     startTime: {
       type: String,
+      required: true,
       match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Start time must be in HH:mm format'],
     },
     endTime: {
       type: String,
+      required: true,
       match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'End time must be in HH:mm format'],
     },
     room: {
@@ -73,8 +81,19 @@ const subjectSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    schedules: {
+      type: [scheduleSlotSchema],
+      default: [],
+    },
+    // Keep legacy schedule field for backward compatibility
     schedule: {
-      type: scheduleSchema,
+      type: {
+        days: [String],
+        startTime: String,
+        endTime: String,
+        room: String,
+        building: String,
+      },
       default: null,
     },
     isActive: {
