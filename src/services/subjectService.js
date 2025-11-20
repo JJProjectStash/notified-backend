@@ -38,15 +38,19 @@ class SubjectService {
         Subject.countDocuments(query),
       ]);
 
-      // Enrich subjects with enrollment counts
+      // Enrich subjects with enrollment counts and transform _id to id
       const enrichedSubjects = await Promise.all(
-        subjects.map(async (subject) => ({
-          ...subject,
-          enrollmentCount: await Enrollment.countDocuments({
-            subject: subject._id,
-            isActive: true,
-          }),
-        }))
+        subjects.map(async (subject) => {
+          const { _id, ...rest } = subject;
+          return {
+            id: _id.toString(),
+            ...rest,
+            enrollmentCount: await Enrollment.countDocuments({
+              subject: _id,
+              isActive: true,
+            }),
+          };
+        })
       );
 
       return {
@@ -87,8 +91,11 @@ class SubjectService {
         isActive: true,
       });
 
+      // Transform _id to id
+      const { _id, ...rest } = subject;
       return {
-        ...subject,
+        id: _id.toString(),
+        ...rest,
         enrollmentCount,
       };
     } catch (error) {
@@ -332,8 +339,17 @@ class SubjectService {
         Subject.countDocuments(query),
       ]);
 
+      // Transform _id to id for each subject
+      const transformedSubjects = subjects.map((subject) => {
+        const { _id, ...rest } = subject;
+        return {
+          id: _id.toString(),
+          ...rest,
+        };
+      });
+
       return {
-        subjects,
+        subjects: transformedSubjects,
         pagination: {
           page,
           limit,
