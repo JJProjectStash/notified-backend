@@ -6,6 +6,7 @@ const {
   NOTIFICATION_TYPES,
 } = require('../config/constants');
 const logger = require('../utils/logger');
+const emailUtil = require('../utils/emailUtil');
 
 /**
  * Subject Attendance Service
@@ -98,6 +99,14 @@ class SubjectAttendanceService {
         performedBy: userId,
       });
 
+      // Send email notifications
+      try {
+        await this._sendAttendanceNotifications(student, subject, attendance);
+      } catch (emailError) {
+        logger.error('Failed to send attendance notification email:', emailError);
+        // Don't fail the attendance marking if email fails
+      }
+
       logger.info(
         `Attendance marked for student ${studentId} in subject ${subjectId} by user ${userId}`
       );
@@ -111,6 +120,49 @@ class SubjectAttendanceService {
     } catch (error) {
       logger.error('Error in markSubjectAttendance:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Send attendance notifications to student and guardian
+   * @private
+   */
+  async _sendAttendanceNotifications(student, subject, attendance) {
+    const attendanceData = {
+      date: attendance.date,
+      status: attendance.status,
+      subject: `${subject.subjectCode} - ${subject.subjectName}`,
+      remarks: attendance.remarks,
+    };
+
+    const studentData = {
+      firstName: student.firstName,
+      lastName: student.lastName,
+      studentNumber: student.studentNumber,
+    };
+
+    // Send to student
+    if (student.email) {
+      try {
+        await emailUtil.sendAttendanceNotification(student.email, studentData, attendanceData);
+        logger.info(`Attendance notification sent to student: ${student.email}`);
+      } catch (error) {
+        logger.error(`Failed to send notification to student ${student.email}:`, error);
+      }
+    }
+
+    // Send to guardian
+    if (student.guardianEmail) {
+      try {
+        await emailUtil.sendAttendanceNotification(
+          student.guardianEmail,
+          studentData,
+          attendanceData
+        );
+        logger.info(`Attendance notification sent to guardian: ${student.guardianEmail}`);
+      } catch (error) {
+        logger.error(`Failed to send notification to guardian ${student.guardianEmail}:`, error);
+      }
     }
   }
 
@@ -199,7 +251,7 @@ class SubjectAttendanceService {
           $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
         },
       })
-        .populate('student', 'studentNumber firstName lastName email section')
+        .populate('student', 'studentNumber firstName lastName email section guardianEmail')
         .populate('markedBy', 'name email')
         .sort({ 'student.studentNumber': 1 })
         .lean();
@@ -229,24 +281,14 @@ class SubjectAttendanceService {
       const targetDate = new Date(date);
       targetDate.setHours(0, 0, 0, 0);
 
-      // Get total enrolled students
+      const records = await this.getSubjectAttendanceByDate(subjectId, date);
+
       const totalEnrolled = await Enrollment.countDocuments({
         subject: subjectId,
         isActive: true,
       });
 
-      // Get attendance records for the date
-      const records = await Attendance.find({
-        subject: subjectId,
-        date: {
-          $gte: targetDate,
-          $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
-        },
-      });
-
-      // Calculate statistics
       const summary = {
-        date: targetDate,
         subjectId: subject._id,
         subjectCode: subject.subjectCode,
         subjectName: subject.subjectName,

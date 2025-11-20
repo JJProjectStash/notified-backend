@@ -9,6 +9,35 @@
 
 const mongoose = require('mongoose');
 
+const scheduleSchema = new mongoose.Schema(
+  {
+    days: {
+      type: [String],
+      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      default: [],
+    },
+    startTime: {
+      type: String,
+      match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Start time must be in HH:mm format'],
+    },
+    endTime: {
+      type: String,
+      match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'End time must be in HH:mm format'],
+    },
+    room: {
+      type: String,
+      trim: true,
+      maxlength: [50, 'Room cannot exceed 50 characters'],
+    },
+    building: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Building cannot exceed 100 characters'],
+    },
+  },
+  { _id: false }
+);
+
 const subjectSchema = new mongoose.Schema(
   {
     subjectCode: {
@@ -43,6 +72,10 @@ const subjectSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: '',
+    },
+    schedule: {
+      type: scheduleSchema,
+      default: null,
     },
     isActive: {
       type: Boolean,
