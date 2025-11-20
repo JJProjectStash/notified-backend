@@ -1,5 +1,6 @@
 const ExcelJS = require('exceljs');
 const fs = require('fs').promises;
+const mongoose = require('mongoose');
 const { Attendance, Student, Subject, Record, Notification } = require('../models');
 const {
   RECORD_TYPES,
@@ -714,27 +715,178 @@ class AttendanceService {
       const records = [];
       const errors = [];
 
-      // Skip header row (row 1)
+      if (!worksheet) {
+        throw new Error('No worksheet found in uploaded workbook');
+      }
+
+      // Build a header map (headerName -> column index) using the first row
+      const headerRow = worksheet.getRow(1);
+      const headerIndexMap = {};
+      const normalizeHeader = (h) =>
+        (h || '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .replace(/[\s\-_.]+/g, ' ');
+
+      const mapHeaderKey = (header) => {
+        const h = normalizeHeader(header);
+        if (/student.*number|student ?no|student|studentnumber|student id|studentid/i.test(h))
+          return 'studentNumber';
+        if (/email|guardian.*email|guardian email|student email/i.test(h)) return 'email';
+        if (/subject.*code|subject code|subjectcode/i.test(h)) return 'subjectCode';
+        if (/subject.*id|subject id|subjectid|subject/i.test(h)) return 'subjectId';
+        if (/date|attendance date|date of attendance/i.test(h)) return 'date';
+        if (/status|attendance status/i.test(h)) return 'status';
+        if (/remarks|comment|note/i.test(h)) return 'remarks';
+        if (/time.*slot|timeslot|slot/i.test(h)) return 'timeSlot';
+        return null;
+      };
+
+      headerRow.eachCell((cell, colNumber) => {
+        const headerText = cell.text || cell.value || '';
+        const key = mapHeaderKey(headerText);
+        if (key) headerIndexMap[key] = colNumber;
+        // Also accept explicit keys like studentId / subjectId
+        if (/^student.*id$/i.test((headerText || '').toString()))
+          headerIndexMap['studentId'] = colNumber;
+        if (/^subject.*id$/i.test((headerText || '').toString()))
+          headerIndexMap['subjectId'] = colNumber;
+      });
+
+      logger.debug('Attendance import header map', headerIndexMap);
+
+      // Fallbacks: if header mapping is empty, fallback to historical indexes
+      const hasMapping = Object.keys(headerIndexMap).length > 0;
+
+      // Iterate data rows (skip header row)
       const rows = [];
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber > 1) rows.push({ row, rowNumber });
       });
 
+      const normalizeStatus = (value) => {
+        if (!value && value !== 0) return null;
+        const v = (value || '').toString().trim().toLowerCase();
+        if (['present', 'p', 'checked in', 'checked-in', 'checkedin'].includes(v))
+          return ATTENDANCE_STATUS.PRESENT;
+        if (['absent', 'a'].includes(v)) return ATTENDANCE_STATUS.ABSENT;
+        if (['late', 'l'].includes(v)) return ATTENDANCE_STATUS.LATE;
+        if (['excused', 'e', 'x', 'excuse'].includes(v)) return ATTENDANCE_STATUS.EXCUSED;
+        return null;
+      };
+
+      const getCellValue = (row, index) => {
+        try {
+          const cell = row.getCell(index);
+          // Prefer .text for text-like values; for dates ExcelJS returns a Date object
+          return cell?.text ?? cell?.value ?? null;
+        } catch (e) {
+          return null;
+        }
+      };
+
       for (const { row, rowNumber } of rows) {
         try {
+          // Read values using header mapping when available, otherwise fallback to historical index positions
+          const studentIdRaw = hasMapping
+            ? getCellValue(row, headerIndexMap.studentId || headerIndexMap.studentNumber || 1)
+            : getCellValue(row, 1);
+
+          const studentNumberRaw = hasMapping
+            ? getCellValue(row, headerIndexMap.studentNumber || 1)
+            : null;
+          const emailRaw = hasMapping ? getCellValue(row, headerIndexMap.email || 1) : null;
+
+          const subjectIdRaw = hasMapping
+            ? getCellValue(row, headerIndexMap.subjectId || headerIndexMap.subjectCode || 2)
+            : getCellValue(row, 2);
+
+          const dateCellRaw = hasMapping
+            ? getCellValue(row, headerIndexMap.date || 3)
+            : getCellValue(row, 3);
+
+          const statusRaw = hasMapping
+            ? getCellValue(row, headerIndexMap.status || 4)
+            : getCellValue(row, 4);
+          const remarksRaw = hasMapping
+            ? getCellValue(row, headerIndexMap.remarks || 5)
+            : getCellValue(row, 5);
+          const timeSlotRaw = hasMapping ? getCellValue(row, headerIndexMap.timeSlot || 6) : null;
+
+          // Resolve student to an ID (support ID, student number, or email)
+          let studentId = null;
+          if (studentIdRaw) {
+            const sCandidate = (studentIdRaw || '').toString().trim();
+            if (mongoose.Types.ObjectId.isValid(sCandidate)) {
+              const s = await Student.findById(sCandidate);
+              if (s) studentId = s._id;
+            } else {
+              // Might be a student number
+              const s = await Student.findOne({ studentNumber: sCandidate });
+              if (s) studentId = s._id;
+            }
+          }
+
+          if (!studentId && studentNumberRaw) {
+            const sCandidate = (studentNumberRaw || '').toString().trim();
+            const s = await Student.findOne({ studentNumber: sCandidate });
+            if (s) studentId = s._id;
+          }
+
+          if (!studentId && emailRaw) {
+            const eCandidate = (emailRaw || '').toString().trim().toLowerCase();
+            const s = await Student.findOne({ email: eCandidate });
+            if (s) studentId = s._id;
+          }
+
+          // Resolve subject: accept subjectId or subjectCode
+          let subjectId = null;
+          if (subjectIdRaw) {
+            const subCandidate = (subjectIdRaw || '').toString().trim();
+            if (mongoose.Types.ObjectId.isValid(subCandidate)) {
+              const found = await Subject.findById(subCandidate);
+              if (found) subjectId = found._id;
+            } else {
+              const found = await Subject.findOne({ subjectCode: subCandidate });
+              if (found) subjectId = found._id;
+            }
+          }
+
+          // Normalize date
+          let dateValue = null;
+          if (dateCellRaw instanceof Date) {
+            dateValue = dateCellRaw;
+          } else if (dateCellRaw) {
+            dateValue = new Date((dateCellRaw || '').toString());
+          }
+
+          // Normalize status
+          const status = normalizeStatus(statusRaw);
+
           const record = {
-            studentId: row.getCell(1).value,
-            subjectId: row.getCell(2).value,
-            date: row.getCell(3).value,
-            status: row.getCell(4).value,
-            remarks: row.getCell(5).value || '',
+            studentId,
+            subjectId,
+            date: dateValue,
+            status,
+            remarks: (remarksRaw || '').toString(),
+            timeSlot: (timeSlotRaw || '').toString() || undefined,
+            _raw: {
+              studentIdRaw,
+              studentNumberRaw,
+              emailRaw,
+              subjectIdRaw,
+              dateCellRaw,
+              statusRaw,
+            },
           };
 
           // Validate required fields
-          if (!record.studentId || !record.subjectId || !record.status) {
+          if (!record.studentId || !record.status) {
             errors.push({
               row: rowNumber,
               error: 'Missing required fields',
+              debug: record._raw,
             });
             continue;
           }
@@ -743,11 +895,14 @@ class AttendanceService {
           if (!Object.values(ATTENDANCE_STATUS).includes(record.status)) {
             errors.push({
               row: rowNumber,
-              error: `Invalid status: ${record.status}`,
+              error: `Invalid status: ${record._raw.statusRaw}`,
+              debug: record._raw,
             });
             continue;
           }
 
+          // Remove debug payload before adding
+          delete record._raw;
           records.push(record);
         } catch (error) {
           errors.push({
