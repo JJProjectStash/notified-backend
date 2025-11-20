@@ -110,25 +110,53 @@ const markSubjectAttendanceValidation = [
     .withMessage('Remarks must not exceed 500 characters'),
 ];
 
+// Updated bulk mark validation to support both formats
 const bulkMarkSubjectAttendanceValidation = [
   body('subjectId')
     .notEmpty()
     .withMessage('Subject ID is required')
     .isMongoId()
     .withMessage('Invalid subject ID'),
-  body('attendanceData')
-    .isArray({ min: 1 })
-    .withMessage('attendanceData must be a non-empty array'),
+  // Support both attendanceData array format and studentIds array format
+  body().custom((value, { req }) => {
+    const hasAttendanceData = req.body.attendanceData && Array.isArray(req.body.attendanceData);
+    const hasStudentIds = req.body.studentIds && Array.isArray(req.body.studentIds);
+
+    if (!hasAttendanceData && !hasStudentIds) {
+      throw new Error('Either attendanceData or studentIds array is required');
+    }
+
+    if (hasAttendanceData && req.body.attendanceData.length === 0) {
+      throw new Error('attendanceData must be a non-empty array');
+    }
+
+    if (hasStudentIds && req.body.studentIds.length === 0) {
+      throw new Error('studentIds must be a non-empty array');
+    }
+
+    return true;
+  }),
+  // Validate attendanceData format if provided
   body('attendanceData.*.studentId')
-    .notEmpty()
-    .withMessage('Student ID is required')
+    .optional()
     .isMongoId()
-    .withMessage('Invalid student ID'),
+    .withMessage('Invalid student ID in attendanceData'),
   body('attendanceData.*.status')
+    .optional()
+    .isIn(['present', 'absent', 'late', 'excused'])
+    .withMessage('Invalid status in attendanceData'),
+  body('attendanceData.*.date').optional().isISO8601().withMessage('Invalid date format'),
+  // Validate studentIds format if provided
+  body('studentIds.*').optional().isMongoId().withMessage('Invalid student ID in studentIds array'),
+  // Validate status when using studentIds format
+  body('status')
+    .if(body('studentIds').exists())
     .notEmpty()
+    .withMessage('Status is required when using studentIds format')
     .isIn(['present', 'absent', 'late', 'excused'])
     .withMessage('Invalid status'),
-  body('attendanceData.*.date').optional().isISO8601().withMessage('Invalid date format'),
+  body('date').optional().isISO8601().withMessage('Invalid date format'),
+  body('timeSlot').optional().isIn(['arrival', 'departure']).withMessage('Invalid time slot'),
 ];
 
 // Subject-specific attendance routes
