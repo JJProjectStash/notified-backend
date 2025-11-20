@@ -10,6 +10,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const { protect, requireAdmin, requireStaff, validate } = require('../middleware');
 const subjectController = require('../controllers/subjectController');
+const enrollmentController = require('../controllers/enrollmentController');
 
 /**
  * Subject Routes
@@ -79,7 +80,50 @@ const updateSubjectValidation = [
     .withMessage('Section must be between 1 and 50 characters'),
 ];
 
-// Routes
+const enrollStudentValidation = [
+  body('studentId')
+    .notEmpty()
+    .withMessage('Student ID is required')
+    .isMongoId()
+    .withMessage('Invalid student ID'),
+];
+
+const bulkEnrollValidation = [
+  body('studentIds').isArray({ min: 1 }).withMessage('studentIds must be a non-empty array'),
+  body('studentIds.*').isMongoId().withMessage('Each student ID must be a valid MongoDB ObjectId'),
+];
+
+// Enrollment routes (must come before :id routes)
+router.post(
+  '/:id/enroll',
+  protect,
+  requireStaff,
+  enrollStudentValidation,
+  validate,
+  enrollmentController.enrollStudent
+);
+
+router.delete(
+  '/:id/enroll/:studentId',
+  protect,
+  requireStaff,
+  enrollmentController.unenrollStudent
+);
+
+router.get('/:id/students', protect, enrollmentController.getEnrolledStudents);
+
+router.post(
+  '/:id/students/bulk',
+  protect,
+  requireStaff,
+  bulkEnrollValidation,
+  validate,
+  enrollmentController.bulkEnrollStudents
+);
+
+router.get('/:id/students/:studentId/enrolled', protect, enrollmentController.checkEnrollment);
+
+// Subject routes
 router.get('/search', protect, subjectController.searchSubjects);
 router.get(
   '/year/:yearLevel/section/:section',

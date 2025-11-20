@@ -8,6 +8,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const studentController = require('../controllers/studentController');
+const enrollmentController = require('../controllers/enrollmentController');
 const { protect, requireStaff, requireAdmin, validate } = require('../middleware');
 
 const router = express.Router();
@@ -41,6 +42,7 @@ const studentValidation = [
 router.get('/', getAllStudents);
 router.get('/generate/student-number', generateStudentNumber);
 router.get('/number/:studentNumber', getStudentByNumber);
+router.get('/:studentId/enrollments', enrollmentController.getStudentEnrollments);
 router.get('/:id', getStudentById);
 router.post('/', requireStaff, studentValidation, validate, createStudent);
 router.put('/:id', requireStaff, updateStudent);

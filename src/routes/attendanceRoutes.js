@@ -11,6 +11,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 const { protect, requireAdmin, requireStaff, validate } = require('../middleware');
 const attendanceController = require('../controllers/attendanceController');
+const subjectAttendanceController = require('../controllers/subjectAttendanceController');
 
 /**
  * All routes require authentication
@@ -83,9 +84,77 @@ const bulkMarkValidation = [
   body('records.*.date').optional().isISO8601().withMessage('Invalid date format'),
 ];
 
-// Routes
+// Subject-specific attendance validation
+const markSubjectAttendanceValidation = [
+  body('subjectId')
+    .notEmpty()
+    .withMessage('Subject ID is required')
+    .isMongoId()
+    .withMessage('Invalid subject ID'),
+  body('studentId')
+    .notEmpty()
+    .withMessage('Student ID is required')
+    .isMongoId()
+    .withMessage('Invalid student ID'),
+  body('date').optional().isISO8601().withMessage('Invalid date format'),
+  body('status')
+    .notEmpty()
+    .withMessage('Status is required')
+    .isIn(['present', 'absent', 'late', 'excused'])
+    .withMessage('Invalid status'),
+  body('timeSlot').optional().isIn(['arrival', 'departure']).withMessage('Invalid time slot'),
+  body('remarks')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Remarks must not exceed 500 characters'),
+];
 
-// New frontend-required endpoints
+const bulkMarkSubjectAttendanceValidation = [
+  body('subjectId')
+    .notEmpty()
+    .withMessage('Subject ID is required')
+    .isMongoId()
+    .withMessage('Invalid subject ID'),
+  body('attendanceData')
+    .isArray({ min: 1 })
+    .withMessage('attendanceData must be a non-empty array'),
+  body('attendanceData.*.studentId')
+    .notEmpty()
+    .withMessage('Student ID is required')
+    .isMongoId()
+    .withMessage('Invalid student ID'),
+  body('attendanceData.*.status')
+    .notEmpty()
+    .isIn(['present', 'absent', 'late', 'excused'])
+    .withMessage('Invalid status'),
+  body('attendanceData.*.date').optional().isISO8601().withMessage('Invalid date format'),
+];
+
+// Subject-specific attendance routes
+router.post(
+  '/subject/mark',
+  requireStaff,
+  markSubjectAttendanceValidation,
+  validate,
+  subjectAttendanceController.markSubjectAttendance
+);
+
+router.post(
+  '/subject/bulk-mark',
+  requireStaff,
+  bulkMarkSubjectAttendanceValidation,
+  validate,
+  subjectAttendanceController.bulkMarkSubjectAttendance
+);
+
+router.get('/subject/:id/date/:date', subjectAttendanceController.getSubjectAttendanceByDate);
+
+router.get('/subject/:id/summary', subjectAttendanceController.getSubjectAttendanceSummary);
+
+router.get('/subject/:id/stats', subjectAttendanceController.getSubjectAttendanceStats);
+
+// General attendance routes
 router.post(
   '/mark',
   requireStaff,
