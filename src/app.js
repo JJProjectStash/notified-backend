@@ -57,10 +57,17 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Rate Limiting
+// Skip health-check route(s) from limiter to avoid orchestration health checks hitting rate limits
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000, // 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later',
+  skip: (req /*, res */) => {
+    // Allow health check probes to bypass rate limiting
+    const url = (req.originalUrl || req.url || '').toString();
+    if (url === '/health' || url.startsWith('/api/v1/health')) return true;
+    return false;
+  },
 });
 app.use('/api/', limiter);
 
@@ -110,6 +117,11 @@ app.get('/api/v1/health', (req, res) => {
     message: 'Backend is alive',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Minimal favicon handler to avoid 404 warnings and unnecessary log spam
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
 });
 // API Routes
 app.use('/api/v1/auth', authRoutes);
