@@ -230,8 +230,24 @@ class SubjectService {
         updateData.subjectCode = updateData.subjectCode.toUpperCase();
       }
 
-      // Update subject
-      Object.assign(subject, updateData);
+      // Handle schedule update specifically if present
+      if (updateData.schedule !== undefined) {
+        // If schedule is null, it means we want to remove it
+        if (updateData.schedule === null) {
+          subject.schedule = undefined;
+        } else {
+          // Ensure schedule has valid structure
+          subject.schedule = updateData.schedule;
+        }
+      }
+
+      // Update other fields
+      Object.keys(updateData).forEach((key) => {
+        if (key !== 'schedule') {
+          subject[key] = updateData[key];
+        }
+      });
+
       await subject.save();
 
       // Create activity record
@@ -403,9 +419,24 @@ class SubjectService {
         .sort({ enrollmentDate: -1 })
         .lean();
 
+      // Use the helper method from EnrollmentService if available, but since this is SubjectService,
+      // we implement the formatting logic here to match what frontend expects
+      const formattedEnrollments = enrollments.map((enrollment) => {
+        const studentObj = enrollment.student || {};
+        const studentId = studentObj._id || enrollment.student;
+        return {
+          id: enrollment._id,
+          studentId: studentId,
+          subjectId: enrollment.subject,
+          enrolledAt: enrollment.enrollmentDate,
+          student: studentObj,
+          enrolledBy: enrollment.enrolledBy,
+        };
+      });
+
       return {
         subject: subject.toObject(),
-        enrollments,
+        enrollments: formattedEnrollments,
         totalEnrolled: enrollments.length,
       };
     } catch (error) {

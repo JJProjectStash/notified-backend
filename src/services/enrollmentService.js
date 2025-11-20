@@ -54,11 +54,13 @@ class EnrollmentService {
             `Enrollment reactivated: Student ${studentId} in Subject ${subjectId} by user ${userId}`
           );
 
-          return await Enrollment.findById(existingEnrollment._id)
+          const populated = await Enrollment.findById(existingEnrollment._id)
             .populate('student', 'studentNumber firstName lastName email section')
             .populate('subject', 'subjectCode subjectName yearLevel section')
             .populate('enrolledBy', 'name email')
             .lean();
+
+          return this._formatEnrollment(populated);
         }
       }
 
@@ -81,11 +83,13 @@ class EnrollmentService {
       logger.info(`Student ${studentId} enrolled in Subject ${subjectId} by user ${userId}`);
 
       // Return populated enrollment
-      return await Enrollment.findById(enrollment._id)
+      const populated = await Enrollment.findById(enrollment._id)
         .populate('student', 'studentNumber firstName lastName email section')
         .populate('subject', 'subjectCode subjectName yearLevel section')
         .populate('enrolledBy', 'name email')
         .lean();
+
+      return this._formatEnrollment(populated);
     } catch (error) {
       logger.error('Error in enrollStudent:', error);
       throw error;
@@ -208,16 +212,30 @@ class EnrollmentService {
         .sort({ enrollmentDate: -1 })
         .lean();
 
-      return enrollments.map((enrollment) => ({
-        ...enrollment.student,
-        enrollmentId: enrollment._id,
-        enrollmentDate: enrollment.enrollmentDate,
-        enrolledBy: enrollment.enrolledBy,
-      }));
+      return enrollments.map((enrollment) => this._formatEnrollment(enrollment));
     } catch (error) {
       logger.error('Error in getEnrolledStudents:', error);
       throw error;
     }
+  }
+
+  /**
+   * Format enrollment object to match frontend expectations
+   * @private
+   */
+  _formatEnrollment(enrollment) {
+    // Ensure we handle both populated and unpopulated student fields
+    const studentObj = enrollment.student || {};
+    const studentId = studentObj._id || enrollment.student;
+
+    return {
+      id: enrollment._id,
+      studentId: studentId,
+      subjectId: enrollment.subject,
+      enrolledAt: enrollment.enrollmentDate,
+      student: studentObj,
+      enrolledBy: enrollment.enrolledBy,
+    };
   }
 
   /**
@@ -260,7 +278,7 @@ class EnrollmentService {
         throw error;
       }
 
-      return enrollment;
+      return this._formatEnrollment(enrollment);
     } catch (error) {
       logger.error('Error in getEnrollmentById:', error);
       throw error;
@@ -290,7 +308,7 @@ class EnrollmentService {
         .sort({ enrollmentDate: -1 })
         .lean();
 
-      return enrollments;
+      return enrollments.map((enrollment) => this._formatEnrollment(enrollment));
     } catch (error) {
       logger.error('Error in getStudentEnrollments:', error);
       throw error;

@@ -31,15 +31,34 @@ exports.markSubjectAttendance = asyncHandler(async (req, res) => {
  * @access Private (Staff/Admin)
  */
 exports.bulkMarkSubjectAttendance = asyncHandler(async (req, res) => {
-  const { subjectId, attendanceData } = req.body;
+  const { subjectId, attendanceData, studentIds, status, date, timeSlot, remarks } = req.body;
 
-  if (!Array.isArray(attendanceData) || attendanceData.length === 0) {
-    return res.status(400).json(ApiResponse.error('attendanceData must be a non-empty array'));
+  let dataToProcess = attendanceData;
+
+  // Support frontend format: { studentIds: [], status: '...', ... }
+  if (!dataToProcess && studentIds && Array.isArray(studentIds)) {
+    dataToProcess = studentIds.map((studentId) => ({
+      studentId,
+      status,
+      date: date || new Date(),
+      timeSlot: timeSlot || 'arrival',
+      remarks,
+    }));
+  }
+
+  if (!Array.isArray(dataToProcess) || dataToProcess.length === 0) {
+    return res
+      .status(400)
+      .json(
+        ApiResponse.error(
+          'Invalid attendance data. Expected attendanceData array or studentIds array.'
+        )
+      );
   }
 
   const result = await subjectAttendanceService.bulkMarkSubjectAttendance(
     subjectId,
-    attendanceData,
+    dataToProcess,
     req.user.id
   );
 
