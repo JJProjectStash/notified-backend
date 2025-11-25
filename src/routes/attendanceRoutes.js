@@ -84,18 +84,28 @@ const bulkMarkValidation = [
   body('records.*.date').optional().isISO8601().withMessage('Invalid date format'),
 ];
 
-// Subject-specific attendance validation
+// Subject-specific attendance validation - FIXED to accept both string and number IDs
 const markSubjectAttendanceValidation = [
   body('subjectId')
     .notEmpty()
     .withMessage('Subject ID is required')
-    .isMongoId()
-    .withMessage('Invalid subject ID'),
+    .custom((value) => {
+      // Accept both MongoDB ObjectId and numeric IDs
+      if (typeof value === 'number' || /^[0-9a-fA-F]{24}$/.test(value)) {
+        return true;
+      }
+      throw new Error('Invalid subject ID format');
+    }),
   body('studentId')
     .notEmpty()
     .withMessage('Student ID is required')
-    .isMongoId()
-    .withMessage('Invalid student ID'),
+    .custom((value) => {
+      // Accept both MongoDB ObjectId and numeric IDs
+      if (typeof value === 'number' || /^[0-9a-fA-F]{24}$/.test(value)) {
+        return true;
+      }
+      throw new Error('Invalid student ID format');
+    }),
   body('date').optional().isISO8601().withMessage('Invalid date format'),
   body('status')
     .notEmpty()
@@ -103,6 +113,7 @@ const markSubjectAttendanceValidation = [
     .isIn(['present', 'absent', 'late', 'excused'])
     .withMessage('Invalid status'),
   body('timeSlot').optional().isIn(['arrival', 'departure']).withMessage('Invalid time slot'),
+  body('scheduleSlot').optional().isString().withMessage('Invalid schedule slot'),
   body('remarks')
     .optional()
     .trim()
@@ -115,8 +126,13 @@ const bulkMarkSubjectAttendanceValidation = [
   body('subjectId')
     .notEmpty()
     .withMessage('Subject ID is required')
-    .isMongoId()
-    .withMessage('Invalid subject ID'),
+    .custom((value) => {
+      // Accept both MongoDB ObjectId and numeric IDs
+      if (typeof value === 'number' || /^[0-9a-fA-F]{24}$/.test(value)) {
+        return true;
+      }
+      throw new Error('Invalid subject ID format');
+    }),
   // Support both attendanceData array format and studentIds array format
   body().custom((value, { req }) => {
     const hasAttendanceData = req.body.attendanceData && Array.isArray(req.body.attendanceData);
@@ -139,15 +155,26 @@ const bulkMarkSubjectAttendanceValidation = [
   // Validate attendanceData format if provided
   body('attendanceData.*.studentId')
     .optional()
-    .isMongoId()
-    .withMessage('Invalid student ID in attendanceData'),
+    .custom((value) => {
+      if (typeof value === 'number' || /^[0-9a-fA-F]{24}$/.test(value)) {
+        return true;
+      }
+      throw new Error('Invalid student ID in attendanceData');
+    }),
   body('attendanceData.*.status')
     .optional()
     .isIn(['present', 'absent', 'late', 'excused'])
     .withMessage('Invalid status in attendanceData'),
   body('attendanceData.*.date').optional().isISO8601().withMessage('Invalid date format'),
-  // Validate studentIds format if provided
-  body('studentIds.*').optional().isMongoId().withMessage('Invalid student ID in studentIds array'),
+  // Validate studentIds format if provided - accept both number and string
+  body('studentIds.*')
+    .optional()
+    .custom((value) => {
+      if (typeof value === 'number' || /^[0-9a-fA-F]{24}$/.test(value)) {
+        return true;
+      }
+      throw new Error('Invalid student ID in studentIds array');
+    }),
   // Validate status when using studentIds format
   body('status')
     .if(body('studentIds').exists())
@@ -157,6 +184,7 @@ const bulkMarkSubjectAttendanceValidation = [
     .withMessage('Invalid status'),
   body('date').optional().isISO8601().withMessage('Invalid date format'),
   body('timeSlot').optional().isIn(['arrival', 'departure']).withMessage('Invalid time slot'),
+  body('scheduleSlot').optional().isString().withMessage('Invalid schedule slot'),
 ];
 
 // Subject-specific attendance routes
