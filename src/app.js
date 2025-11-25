@@ -30,6 +30,7 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 const recordRoutes = require('./routes/recordRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const emailRoutes = require('./routes/emailRoutes');
+const pingRoutes = require('./routes/pingRoutes');
 
 const app = express();
 
@@ -99,31 +100,19 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined', { stream: { write: (message) => logger.http(message.trim()) } }));
 }
 
-// Health Check Route
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Server is running',
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Lightweight API health route (no DB queries)
-// Safe to ping every 5-10 minutes to keep the server warm
-app.get('/api/v1/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Backend is alive',
-    timestamp: new Date().toISOString(),
-  });
-});
+// Remove previous health endpoints in favor of a single very lightweight /ping route
 
 // Minimal favicon handler to avoid 404 warnings and unnecessary log spam
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
 });
 // API Routes
+// Lightweight public ping endpoint (not rate-limited) — keep before API rate limits
+// Keep backward-compatible health endpoints mapped to the same quick ping handler
+app.use('/ping', pingRoutes);
+app.use('/health', pingRoutes);
+app.use('/api/v1/health', pingRoutes);
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/students', studentRoutes);
