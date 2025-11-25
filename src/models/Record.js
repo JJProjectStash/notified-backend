@@ -34,6 +34,10 @@ const recordSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
   },
   {
     timestamps: true,
@@ -47,12 +51,19 @@ recordSchema.index({ subject: 1 });
 recordSchema.index({ createdAt: -1 });
 
 // Static method to create a student-related record
-recordSchema.statics.createStudentRecord = function (studentId, recordType, recordData, userId) {
+recordSchema.statics.createStudentRecord = function (
+  studentId,
+  recordType,
+  recordData,
+  userId,
+  metadata = {}
+) {
   return this.create({
     student: studentId,
     recordType,
     recordData,
     performedBy: userId,
+    metadata,
   });
 };
 

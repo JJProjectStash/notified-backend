@@ -91,11 +91,18 @@ class EmailService {
         attachments,
       });
 
-      // Create activity record
+      // Create activity record with metadata
       await Record.create({
         recordType: RECORD_TYPES.EMAIL_SENT,
         recordData: `Email sent to ${to}: ${subject}`,
         performedBy: userId,
+        metadata: {
+          recipient: to,
+          subject: subject,
+          messageId: result.messageId,
+          totalRecipients: 1,
+          sentCount: 1,
+        },
       });
 
       logger.info(`Email sent to ${to} by user ${userId} (MessageID: ${result.messageId})`);
@@ -163,11 +170,18 @@ class EmailService {
         }
       }
 
-      // Create activity record
+      // Create activity record with metadata including all recipients
       await Record.create({
         recordType: RECORD_TYPES.EMAIL_SENT,
         recordData: `Bulk email sent: ${subject} (${successCount}/${recipients.length} successful)`,
         performedBy: userId,
+        metadata: {
+          recipients: recipients,
+          subject: subject,
+          totalRecipients: recipients.length,
+          sentCount: successCount,
+          failedCount: errors.length,
+        },
       });
 
       logger.info(
@@ -243,7 +257,7 @@ class EmailService {
         text: `Regarding: ${student.firstName} ${student.lastName} (${student.studentNumber})\n\n${message}`,
       });
 
-      // Create activity record linked to student
+      // Create activity record linked to student with metadata
       await Record.createStudentRecord(
         studentId,
         RECORD_TYPES.EMAIL_SENT,
@@ -252,8 +266,10 @@ class EmailService {
         {
           recipient: recipientEmail,
           guardianName: student.guardianName,
-          subject,
+          subject: subject,
           messageId: result.messageId,
+          totalRecipients: 1,
+          sentCount: 1,
         }
       );
 
