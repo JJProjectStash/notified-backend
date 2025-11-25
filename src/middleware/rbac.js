@@ -51,8 +51,15 @@ const requireAdmin = restrictTo(ROLES.SUPERADMIN, ROLES.ADMIN);
 
 /**
  * Require staff or higher role (any authenticated user)
+ * UPDATED: More permissive for general operations
  */
-const requireStaff = restrictTo(ROLES.SUPERADMIN, ROLES.ADMIN, ROLES.STAFF);
+const requireStaff = (req, res, next) => {
+  // Allow any authenticated user to proceed
+  if (!req.user) {
+    return ApiResponse.unauthorized(res, ERROR_MESSAGES.UNAUTHORIZED);
+  }
+  next();
+};
 
 /**
  * Check if user has at least the specified role level
