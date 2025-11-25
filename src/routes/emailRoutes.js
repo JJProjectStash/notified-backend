@@ -112,11 +112,11 @@ router.post('/send', sendSingleEmailValidation, validate, emailController.sendSi
 /**
  * @route   POST /api/v1/emails/send-bulk
  * @desc    Send bulk emails
- * @access  Private (Admin/Staff)
+ * @access  Private (Admin/Staff/System Admin)
  */
 router.post(
   '/send-bulk',
-  restrictTo('admin', 'staff'),
+  restrictTo('admin', 'staff', 'system_admin'),
   sendBulkEmailValidation,
   validate,
   emailController.sendBulkEmail
@@ -137,18 +137,18 @@ router.post(
 /**
  * @route   GET /api/v1/emails/config
  * @desc    Check email configuration status
- * @access  Private (Admin)
+ * @access  Private (Admin/System Admin)
  */
-router.get('/config', restrictTo('admin'), emailController.getEmailConfig);
+router.get('/config', restrictTo('admin', 'system_admin'), emailController.getEmailConfig);
 
 /**
  * @route   POST /api/v1/emails/test
  * @desc    Test email configuration
- * @access  Private (Admin)
+ * @access  Private (Admin/System Admin)
  */
 router.post(
   '/test',
-  restrictTo('admin'),
+  restrictTo('admin', 'system_admin'),
   testEmailValidation,
   validate,
   emailController.testEmailConfig
