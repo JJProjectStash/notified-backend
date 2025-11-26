@@ -224,6 +224,22 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
    - Check record count
 
 3. **Test Students Page:**
+  ### Reset Database Contents
+
+  If you need to wipe documents from all collections while preserving indexes and collection structure, you can use the reset script:
+
+  ```bash
+  node scripts/reset-db-contents.js --dry-run
+  ```
+
+  When ready, run without `--dry-run` and confirm the interactive prompt (or use `--force` to skip confirmation):
+
+  ```bash
+  node scripts/reset-db-contents.js --force --exclude=users
+  ```
+
+  Use `--include` to target specific collections only, for example: `--include=students,attendance`.
+
    - Create a new student
    - Edit the student
    - Delete the student
