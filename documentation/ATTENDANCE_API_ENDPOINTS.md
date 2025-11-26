@@ -14,7 +14,7 @@ http://localhost:5000/api/v1/attendance
 
 ### 1. Mark Single Attendance
 
-**POST** `/api/attendance/mark`
+**POST** `/api/v1/attendance/mark`
 
 Mark attendance for a single student.
 
@@ -61,6 +61,7 @@ Mark attendance for a single student.
     },
     "date": "2025-11-16T00:00:00.000Z",
     "status": "present",
+    "timeSlot": "arrival",
     "remarks": "Optional remarks",
     "markedBy": {
       "_id": "507f1f77bcf86cd799439014",
@@ -77,7 +78,7 @@ Mark attendance for a single student.
 
 ### 2. Bulk Mark Attendance
 
-**POST** `/api/attendance/bulk-mark`
+**POST** `/api/v1/attendance/bulk-mark`
 
 Mark attendance for multiple students at once.
 
@@ -140,7 +141,7 @@ Mark attendance for multiple students at once.
 
 ### 3. Get Attendance Records
 
-**GET** `/api/attendance/records` (also available via `GET /api/v1/attendance`)
+**GET** `/api/v1/attendance/records` (also available via `GET /api/v1/attendance`)
 
 Retrieve attendance records with flexible filtering and pagination.
 
@@ -204,7 +205,7 @@ GET /api/attendance/records?subjectId=507f1f77bcf86cd799439012&status=absent&pag
 
 ### 4. Get Daily Summary
 
-**GET** `/api/attendance/summary/daily/:date`
+**GET** `/api/v1/attendance/summary/daily/:date`
 
 Get attendance summary for a specific date.
 
@@ -246,7 +247,7 @@ GET /api/attendance/summary/daily/2025-11-16?subjectId=507f1f77bcf86cd799439012
 
 ### 5. Get Students Summary
 
-**GET** `/api/attendance/summary/students`
+**GET** `/api/v1/attendance/summary/students`
 
 Get attendance summary for all students with statistics.
 
@@ -305,7 +306,7 @@ GET /api/attendance/summary/students?subjectId=507f1f77bcf86cd799439012&startDat
 
 ### 6. Import from Excel
 
-**POST** `/api/attendance/import/excel`
+**POST** `/api/v1/attendance/import/excel`
 
 Import attendance records from an Excel file.
 
@@ -361,7 +362,7 @@ curl -X POST http://localhost:5000/api/v1/attendance/import/excel \
 
 ### 7. Export to Excel
 
-**GET** `/api/attendance/export/excel`
+**GET** `/api/v1/attendance/export/excel`
 
 Export attendance records to an Excel file.
 
@@ -398,7 +399,7 @@ GET /api/attendance/export/excel?subjectId=507f1f77bcf86cd799439012&startDate=20
 
 ### 8. Get Attendance by Date Range
 
-**GET** `/api/attendance/range`
+**GET** `/api/v1/attendance/range`
 
 Retrieve attendance records within a date range.
 
@@ -415,7 +416,7 @@ Retrieve attendance records within a date range.
 
 ### 9. Get Student Attendance
 
-**GET** `/api/attendance/student/:studentId`
+**GET** `/api/v1/attendance/student/:studentId`
 
 Get all attendance records for a specific student.
 
@@ -431,7 +432,7 @@ Get all attendance records for a specific student.
 
 ### 10. Get Subject Attendance
 
-**GET** `/api/attendance/subject/:subjectId`
+**GET** `/api/v1/attendance/subject/:subjectId`
 
 Get all attendance records for a specific subject.
 
@@ -447,7 +448,7 @@ Get all attendance records for a specific subject.
 
 ### 11. Get Student Attendance Summary
 
-**GET** `/api/attendance/student/:studentId/summary`
+**GET** `/api/v1/attendance/student/:studentId/summary`
 
 Get attendance statistics for a student.
 
@@ -463,7 +464,7 @@ Get attendance statistics for a student.
 
 ### 12. Get Today's Attendance
 
-**GET** `/api/attendance/subject/:subjectId/today`
+**GET** `/api/v1/attendance/subject/:subjectId/today`
 
 Get today's attendance for a subject.
 
@@ -475,7 +476,7 @@ Get today's attendance for a subject.
 
 ### 13. Update Attendance
 
-**PUT** `/api/attendance/:id`
+**PUT** `/api/v1/attendance/:id`
 
 Update an existing attendance record.
 
@@ -499,7 +500,7 @@ Update an existing attendance record.
 
 ### 14. Delete Attendance
 
-**DELETE** `/api/attendance/:id`
+**DELETE** `/api/v1/attendance/:id`
 
 Delete an attendance record.
 
@@ -636,3 +637,11 @@ JWT_SECRET=your_jwt_secret
 ```
 
 For frontend integration, see `ATTENDANCE_INTEGRATION.md` in the frontend documentation.
+
+Notes for Frontend implementers:
+- The Students page contains the Import Excel UI and Download Template (not the Attendance page). The Attendance page shows attendance records and export actions only.
+- When POST /api/v1/attendance returns `409` (Conflict), the response includes the existing attendance document in `data` to let the UI open an edit modal or confirm overwriting.
+
+---
+
+**Last Updated**: November 26, 2025

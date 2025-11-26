@@ -8,43 +8,43 @@ All **7 required frontend attendance endpoints** have been successfully implemen
 
 ## 📋 New Endpoints Implemented
 
-### ✅ 1. POST `/api/attendance/mark`
+### ✅ 1. POST `/api/v1/attendance/mark`
 - **Purpose:** Mark single attendance
 - **File:** `src/controllers/attendanceController.js` → `markAttendance()`
 - **Service:** `src/services/attendanceService.js` → `markAttendance()`
 - **Status:** ✅ Implemented
 
-### ✅ 2. POST `/api/attendance/bulk-mark`
+### ✅ 2. POST `/api/v1/attendance/bulk-mark`
 - **Purpose:** Mark bulk attendance for multiple students
 - **File:** `src/controllers/attendanceController.js` → `bulkMarkAttendance()`
 - **Service:** `src/services/attendanceService.js` → `bulkMarkAttendance()`
 - **Status:** ✅ Implemented
 
-### ✅ 3. GET `/api/attendance/records`
+### ✅ 3. GET `/api/v1/attendance/records`
 - **Purpose:** Get attendance records with flexible filtering
 - **File:** `src/controllers/attendanceController.js` → `getAttendanceRecords()`
 - **Service:** `src/services/attendanceService.js` → `getAttendanceRecords()`
 - **Status:** ✅ Implemented
 
-### ✅ 4. GET `/api/attendance/summary/daily/:date`
+### ✅ 4. GET `/api/v1/attendance/summary/daily/:date`
 - **Purpose:** Get daily attendance summary
 - **File:** `src/controllers/attendanceController.js` → `getDailySummary()`
 - **Service:** `src/services/attendanceService.js` → `getDailySummary()`
 - **Status:** ✅ Implemented
 
-### ✅ 5. GET `/api/attendance/summary/students`
+### ✅ 5. GET `/api/v1/attendance/summary/students`
 - **Purpose:** Get all students attendance summary
 - **File:** `src/controllers/attendanceController.js` → `getStudentsSummary()`
 - **Service:** `src/services/attendanceService.js` → `getStudentsSummary()`
 - **Status:** ✅ Implemented
 
-### ✅ 6. POST `/api/attendance/import/excel`
+### ✅ 6. POST `/api/v1/attendance/import/excel`
 - **Purpose:** Import attendance from Excel file
 - **File:** `src/controllers/attendanceController.js` → `importFromExcel()`
 - **Service:** `src/services/attendanceService.js` → `importFromExcel()`
 - **Status:** ✅ Implemented
 
-### ✅ 7. GET `/api/attendance/export/excel`
+### ✅ 7. GET `/api/v1/attendance/export/excel`
 - **Purpose:** Export attendance to Excel file
 - **File:** `src/controllers/attendanceController.js` → `exportToExcel()`
 - **Service:** `src/services/attendanceService.js` → `exportToExcel()`

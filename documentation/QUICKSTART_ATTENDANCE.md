@@ -103,25 +103,25 @@ Total: 6 | Passed: 6 | Failed: 0
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| POST | `/api/attendance/mark` | Mark single attendance |
-| POST | `/api/attendance/bulk-mark` | Bulk mark attendance |
-| GET | `/api/attendance/records` | Get filtered records |
-| GET | `/api/attendance/summary/daily/:date` | Daily summary |
-| GET | `/api/attendance/summary/students` | Students summary |
-| POST | `/api/attendance/import/excel` | Import from Excel |
-| GET | `/api/attendance/export/excel` | Export to Excel |
+| POST | `/api/v1/attendance/mark` | Mark single attendance |
+| POST | `/api/v1/attendance/bulk-mark` | Bulk mark attendance |
+| GET | `/api/v1/attendance/records` | Get filtered records |
+| GET | `/api/v1/attendance/summary/daily/:date` | Daily summary |
+| GET | `/api/v1/attendance/summary/students` | Students summary |
+| POST | `/api/v1/attendance/import/excel` | Import from Excel |
+| GET | `/api/v1/attendance/export/excel` | Export to Excel |
 
 ### Existing Endpoints
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/api/attendance/range` | Get by date range |
-| GET | `/api/attendance/student/:id` | Student attendance |
-| GET | `/api/attendance/subject/:id` | Subject attendance |
-| GET | `/api/attendance/student/:id/summary` | Student summary |
-| GET | `/api/attendance/subject/:id/today` | Today's attendance |
-| PUT | `/api/attendance/:id` | Update attendance |
-| DELETE | `/api/attendance/:id` | Delete attendance |
+| GET | `/api/v1/attendance/range` | Get by date range |
+| GET | `/api/v1/attendance/student/:id` | Student attendance |
+| GET | `/api/v1/attendance/subject/:id` | Subject attendance |
+| GET | `/api/v1/attendance/student/:id/summary` | Student summary |
+| GET | `/api/v1/attendance/subject/:id/today` | Today's attendance |
+| PUT | `/api/v1/attendance/:id` | Update attendance |
+| DELETE | `/api/v1/attendance/:id` | Delete attendance |
 
 ---
 
@@ -326,7 +326,7 @@ npm run dev
 ### Issue: "Attendance already exists"
 **Solution:**
 - Each student can have only one attendance per subject per day
-- Use PUT `/api/attendance/:id` to update existing attendance
+- Use PUT `/api/v1/attendance/:id` to update existing attendance
 - Or delete the old record first
 
 ### Issue: Excel import fails
