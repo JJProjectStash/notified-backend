@@ -17,7 +17,7 @@ class SubjectAttendanceService {
    * Mark attendance for a student in a subject
    * @param {Object} attendanceData - Attendance data with subjectId, studentId, date, status
    * @param {String} userId - User ID marking attendance
-   * @returns {Promise<Object>} Created attendance record
+   * @returns {Promise<Object>} Created or updated attendance record
    */
   async markSubjectAttendance(attendanceData, userId) {
     try {
@@ -69,55 +69,72 @@ class SubjectAttendanceService {
         timeSlot: timeSlot || null,
       });
 
+      let attendance;
+      let isUpdate = false;
+
       if (existingAttendance) {
-        const populatedExisting = await Attendance.findById(existingAttendance._id)
-          .populate('student', 'studentNumber firstName lastName')
-          .populate('subject', 'subjectCode subjectName')
-          .populate('markedBy', 'name email')
-          .lean();
+        // Update existing attendance instead of throwing error
+        isUpdate = true;
 
-        const error = new Error(
-          scheduleSlot
-            ? `Attendance already marked for ${scheduleSlot} - ${timeSlot || 'arrival'}`
-            : ERROR_MESSAGES.ATTENDANCE_EXISTS
-        );
-        error.statusCode = 409;
-        error.data = populatedExisting;
-        throw error;
+        // Add current state to history before updating
+        existingAttendance.history.push({
+          status: existingAttendance.status,
+          timeSlot: existingAttendance.timeSlot,
+          scheduleSlot: existingAttendance.scheduleSlot,
+          remarks: existingAttendance.remarks,
+          editedAt: existingAttendance.editedAt || existingAttendance.createdAt,
+          editedBy: existingAttendance.editedBy || existingAttendance.markedBy,
+        });
+
+        // Update the attendance
+        existingAttendance.status = status;
+        existingAttendance.remarks = remarks || existingAttendance.remarks;
+        existingAttendance.editedAt = new Date();
+        existingAttendance.editedBy = userId;
+
+        await existingAttendance.save();
+        attendance = existingAttendance;
+      } else {
+        // Create new attendance record
+        attendance = await Attendance.create({
+          student: studentId,
+          subject: subjectId,
+          date: attendanceDate,
+          status,
+          timeSlot,
+          scheduleSlot,
+          remarks,
+          markedBy: userId,
+        });
       }
-
-      // Create attendance record
-      const attendance = await Attendance.create({
-        student: studentId,
-        subject: subjectId,
-        date: attendanceDate,
-        status,
-        timeSlot,
-        scheduleSlot,
-        remarks,
-        markedBy: userId,
-      });
 
       // Create activity record
       const scheduleInfo = scheduleSlot ? ` (${scheduleSlot})` : '';
+      const actionType = isUpdate ? 'updated' : 'marked';
       await Record.create({
         student: studentId,
         subject: subjectId,
         recordType: RECORD_TYPES.ATTENDANCE_MARKED,
-        recordData: `Attendance marked as ${status} for ${subject.subjectName}${scheduleInfo}`,
+        recordData: `Attendance ${actionType} as ${status} for ${subject.subjectName}${scheduleInfo}`,
         performedBy: userId,
       });
 
       // Send email notifications
       try {
-        await this._sendAttendanceNotifications(student, subject, attendance, scheduleSlot);
+        await this._sendAttendanceNotifications(
+          student,
+          subject,
+          attendance,
+          scheduleSlot,
+          isUpdate
+        );
       } catch (emailError) {
         logger.error('Failed to send attendance notification email:', emailError);
         // Don't fail the attendance marking if email fails
       }
 
       logger.info(
-        `Attendance marked for student ${studentId} in subject ${subjectId} by user ${userId}`
+        `Attendance ${actionType} for student ${studentId} in subject ${subjectId} by user ${userId}`
       );
 
       // Return populated attendance
@@ -136,13 +153,15 @@ class SubjectAttendanceService {
    * Send attendance notifications to student and guardian
    * @private
    */
-  async _sendAttendanceNotifications(student, subject, attendance, scheduleSlot) {
+  async _sendAttendanceNotifications(student, subject, attendance, scheduleSlot, isUpdate = false) {
     const scheduleInfo = scheduleSlot ? ` - ${scheduleSlot}` : '';
+    const actionType = isUpdate ? 'updated' : 'marked';
     const attendanceData = {
       date: attendance.date,
       status: attendance.status,
       subject: `${subject.subjectCode} - ${subject.subjectName}${scheduleInfo}`,
       remarks: attendance.remarks,
+      actionType,
     };
 
     const studentData = {
