@@ -174,7 +174,7 @@ exports.bulkMarkAttendance = asyncHandler(async (req, res) => {
  * @access Private
  */
 exports.getAttendanceRecords = asyncHandler(async (req, res) => {
-  const { startDate, endDate, studentId, subjectId, status, page, limit } = req.query;
+  const { startDate, endDate, studentId, subjectId, status, timeSlot, page, limit } = req.query;
 
   const filters = {};
   if (studentId) filters.studentId = studentId;
