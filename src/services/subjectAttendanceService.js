@@ -119,25 +119,25 @@ class SubjectAttendanceService {
         performedBy: userId,
       });
 
-      // Send email notifications
-      try {
-        await this._sendAttendanceNotifications(
+      // Send email notifications asynchronously (fire-and-forget)
+      // This prevents the API from timing out while waiting for emails to send
+      setImmediate(() => {
+        this._sendAttendanceNotifications(
           student,
           subject,
           attendance,
           scheduleSlot,
           isUpdate
-        );
-      } catch (emailError) {
-        logger.error('Failed to send attendance notification email:', emailError);
-        // Don't fail the attendance marking if email fails
-      }
+        ).catch((emailError) => {
+          logger.error('Failed to send attendance notification email:', emailError);
+        });
+      });
 
       logger.info(
         `Attendance ${actionType} for student ${studentId} in subject ${subjectId} by user ${userId}`
       );
 
-      // Return populated attendance
+      // Return populated attendance immediately without waiting for emails
       return await Attendance.findById(attendance._id)
         .populate('student', 'studentNumber firstName lastName email')
         .populate('subject', 'subjectCode subjectName')

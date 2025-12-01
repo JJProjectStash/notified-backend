@@ -23,7 +23,13 @@ exports.markSubjectAttendance = asyncHandler(async (req, res) => {
     req.user.id
   );
 
-  res.status(201).json(ApiResponse.created(attendance, 'Attendance marked successfully'));
+  // Use the correct pattern for ApiResponse
+  res.status(201).json({
+    success: true,
+    message: 'Attendance marked successfully',
+    data: attendance,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 /**
@@ -50,13 +56,11 @@ exports.bulkMarkSubjectAttendance = asyncHandler(async (req, res) => {
   }
 
   if (!Array.isArray(dataToProcess) || dataToProcess.length === 0) {
-    return res
-      .status(400)
-      .json(
-        ApiResponse.error(
-          'Invalid attendance data. Expected attendanceData array or studentIds array.'
-        )
-      );
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid attendance data. Expected attendanceData array or studentIds array.',
+      timestamp: new Date().toISOString(),
+    });
   }
 
   const result = await subjectAttendanceService.bulkMarkSubjectAttendance(
@@ -65,14 +69,12 @@ exports.bulkMarkSubjectAttendance = asyncHandler(async (req, res) => {
     req.user.id
   );
 
-  res
-    .status(201)
-    .json(
-      ApiResponse.success(
-        result,
-        `Bulk attendance marked: ${result.successful.length}/${result.total} successful`
-      )
-    );
+  res.status(201).json({
+    success: true,
+    message: `Bulk attendance marked: ${result.successful.length}/${result.total} successful`,
+    data: result,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 /**
@@ -85,7 +87,12 @@ exports.getSubjectAttendanceByDate = asyncHandler(async (req, res) => {
 
   const records = await subjectAttendanceService.getSubjectAttendanceByDate(subjectId, date);
 
-  res.json(ApiResponse.success(records, 'Attendance records retrieved successfully'));
+  res.json({
+    success: true,
+    message: 'Attendance records retrieved successfully',
+    data: records,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 /**
@@ -102,7 +109,12 @@ exports.getSubjectAttendanceSummary = asyncHandler(async (req, res) => {
     date || new Date()
   );
 
-  res.json(ApiResponse.success(summary, 'Attendance summary retrieved successfully'));
+  res.json({
+    success: true,
+    message: 'Attendance summary retrieved successfully',
+    data: summary,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 /**
@@ -115,7 +127,11 @@ exports.getSubjectAttendanceStats = asyncHandler(async (req, res) => {
   const { startDate, endDate } = req.query;
 
   if (!startDate || !endDate) {
-    return res.status(400).json(ApiResponse.error('Start date and end date are required'));
+    return res.status(400).json({
+      success: false,
+      message: 'Start date and end date are required',
+      timestamp: new Date().toISOString(),
+    });
   }
 
   const stats = await subjectAttendanceService.getSubjectAttendanceStats(
@@ -124,5 +140,10 @@ exports.getSubjectAttendanceStats = asyncHandler(async (req, res) => {
     endDate
   );
 
-  res.json(ApiResponse.success(stats, 'Attendance statistics retrieved successfully'));
+  res.json({
+    success: true,
+    message: 'Attendance statistics retrieved successfully',
+    data: stats,
+    timestamp: new Date().toISOString(),
+  });
 });
