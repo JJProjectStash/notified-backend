@@ -15,6 +15,7 @@ exports.markSubjectAttendance = asyncHandler(async (req, res) => {
     status: req.body.status,
     remarks: req.body.remarks,
     timeSlot: req.body.timeSlot,
+    scheduleSlot: req.body.scheduleSlot, // Include schedule slot
   };
 
   const attendance = await subjectAttendanceService.markSubjectAttendance(
@@ -31,7 +32,8 @@ exports.markSubjectAttendance = asyncHandler(async (req, res) => {
  * @access Private (Staff/Admin)
  */
 exports.bulkMarkSubjectAttendance = asyncHandler(async (req, res) => {
-  const { subjectId, attendanceData, studentIds, status, date, timeSlot, remarks } = req.body;
+  const { subjectId, attendanceData, studentIds, status, date, timeSlot, remarks, scheduleSlot } =
+    req.body;
 
   let dataToProcess = attendanceData;
 
@@ -42,6 +44,7 @@ exports.bulkMarkSubjectAttendance = asyncHandler(async (req, res) => {
       status,
       date: date || new Date(),
       timeSlot: timeSlot || 'arrival',
+      scheduleSlot, // Include schedule slot
       remarks,
     }));
   }

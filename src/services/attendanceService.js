@@ -91,6 +91,7 @@ class AttendanceService {
         date: attendanceDate,
         status,
         timeSlot: attendanceData.timeSlot,
+        scheduleSlot: attendanceData.scheduleSlot,
         remarks,
         markedBy: userId,
       });
@@ -176,7 +177,7 @@ class AttendanceService {
 
       const [records, total] = await Promise.all([
         Attendance.find(query)
-          .populate('student', 'studentNumber firstName lastName section')
+          .populate('student', 'studentNumber firstName lastName section email')
           .populate('subject', 'subjectCode subjectName')
           .populate('markedBy', 'name email')
           .sort({ date: -1, createdAt: -1 })
@@ -186,8 +187,20 @@ class AttendanceService {
         Attendance.countDocuments(query),
       ]);
 
+      // Transform records to include all necessary fields
+      const transformedRecords = records.map((record) => ({
+        ...record,
+        studentNumber: record.student?.studentNumber,
+        firstName: record.student?.firstName,
+        lastName: record.student?.lastName,
+        email: record.student?.email,
+        subjectCode: record.subject?.subjectCode,
+        subjectName: record.subject?.subjectName,
+        timestamp: record.createdAt,
+      }));
+
       return {
-        records,
+        records: transformedRecords,
         pagination: {
           page,
           limit,
@@ -370,6 +383,7 @@ class AttendanceService {
       const historyEntry = {
         status: attendance.status,
         timeSlot: attendance.timeSlot,
+        scheduleSlot: attendance.scheduleSlot,
         remarks: attendance.remarks,
         editedAt: new Date(),
         editedBy: userId,
@@ -523,7 +537,7 @@ class AttendanceService {
    */
   async getAttendanceRecords(filters = {}, pagination = {}) {
     try {
-      const { page = 1, limit = 10 } = ValidationUtil.validatePagination(pagination);
+      const { page = 1, limit = 50 } = ValidationUtil.validatePagination(pagination);
       const skip = (page - 1) * limit;
 
       const query = {};
@@ -531,6 +545,8 @@ class AttendanceService {
       if (filters.studentId) query.student = filters.studentId;
       if (filters.subjectId) query.subject = filters.subjectId;
       if (filters.status) query.status = filters.status;
+      if (filters.timeSlot) query.timeSlot = filters.timeSlot;
+      if (filters.scheduleSlot) query.scheduleSlot = filters.scheduleSlot;
 
       if (filters.startDate || filters.endDate) {
         query.date = {};
@@ -548,7 +564,7 @@ class AttendanceService {
 
       const [records, total] = await Promise.all([
         Attendance.find(query)
-          .populate('student', 'studentNumber firstName lastName section')
+          .populate('student', 'studentNumber firstName lastName section email')
           .populate('subject', 'subjectCode subjectName')
           .populate('markedBy', 'name email')
           .sort({ date: -1, createdAt: -1 })
@@ -558,8 +574,30 @@ class AttendanceService {
         Attendance.countDocuments(query),
       ]);
 
+      // Transform records to flatten student and subject data for easier frontend consumption
+      const transformedRecords = records.map((record) => ({
+        id: record.id || record._id,
+        studentId: record.student?._id,
+        studentNumber: record.student?.studentNumber,
+        firstName: record.student?.firstName,
+        lastName: record.student?.lastName,
+        email: record.student?.email,
+        subjectId: record.subject?._id,
+        subjectCode: record.subject?.subjectCode,
+        subjectName: record.subject?.subjectName,
+        status: record.status,
+        timeSlot: record.timeSlot,
+        scheduleSlot: record.scheduleSlot,
+        remarks: record.remarks,
+        date: record.date,
+        timestamp: record.createdAt,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        markedBy: record.markedBy,
+      }));
+
       return {
-        records,
+        records: transformedRecords,
         pagination: {
           page,
           limit,
@@ -740,6 +778,7 @@ class AttendanceService {
         if (/status|attendance status/i.test(h)) return 'status';
         if (/remarks|comment|note/i.test(h)) return 'remarks';
         if (/time.*slot|timeslot|slot/i.test(h)) return 'timeSlot';
+        if (/schedule.*slot|scheduleslot/i.test(h)) return 'scheduleSlot';
         return null;
       };
 
@@ -813,6 +852,9 @@ class AttendanceService {
             ? getCellValue(row, headerIndexMap.remarks || 5)
             : getCellValue(row, 5);
           const timeSlotRaw = hasMapping ? getCellValue(row, headerIndexMap.timeSlot || 6) : null;
+          const scheduleSlotRaw = hasMapping
+            ? getCellValue(row, headerIndexMap.scheduleSlot || 7)
+            : null;
 
           // Resolve student to an ID (support ID, student number, or email)
           let studentId = null;
@@ -871,6 +913,7 @@ class AttendanceService {
             status,
             remarks: (remarksRaw || '').toString(),
             timeSlot: (timeSlotRaw || '').toString() || undefined,
+            scheduleSlot: (scheduleSlotRaw || '').toString() || undefined,
             _raw: {
               studentIdRaw,
               studentNumberRaw,
@@ -982,6 +1025,7 @@ class AttendanceService {
         { header: 'Subject Name', key: 'subjectName', width: 25 },
         { header: 'Date', key: 'date', width: 15 },
         { header: 'Status', key: 'status', width: 12 },
+        { header: 'Schedule Slot', key: 'scheduleSlot', width: 20 },
         { header: 'Remarks', key: 'remarks', width: 30 },
         { header: 'Marked By', key: 'markedBy', width: 20 },
       ];
@@ -1006,6 +1050,7 @@ class AttendanceService {
           subjectName: record.subject?.subjectName || 'N/A',
           date: new Date(record.date).toLocaleDateString(),
           status: record.status,
+          scheduleSlot: record.scheduleSlot || 'N/A',
           remarks: record.remarks || '',
           markedBy: record.markedBy?.name || 'System',
         });
