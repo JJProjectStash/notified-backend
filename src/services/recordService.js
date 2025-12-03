@@ -331,7 +331,7 @@ class RecordService {
   /**
    * Get record statistics
    * @param {Object} filters - Optional filters (startDate, endDate)
-   * @returns {Promise<Object>} Record statistics
+   * @returns {Promise<Object>} Record statistics including dashboard stats
    */
   async getRecordStats(filters = {}) {
     try {
@@ -344,44 +344,68 @@ class RecordService {
         };
       }
 
-      const [total, byType, byPerformer] = await Promise.all([
-        Record.countDocuments(query),
-        Record.aggregate([
-          { $match: query },
-          { $group: { _id: '$recordType', count: { $sum: 1 } } },
-          { $sort: { count: -1 } },
-        ]),
-        Record.aggregate([
-          { $match: query },
-          {
-            $group: {
-              _id: '$performedBy',
-              count: { $sum: 1 },
+      // Get today's date range for todayRecords
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const [total, byType, byPerformer, totalStudents, totalSubjects, todayRecords] =
+        await Promise.all([
+          Record.countDocuments(query),
+          Record.aggregate([
+            { $match: query },
+            { $group: { _id: '$recordType', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+          ]),
+          Record.aggregate([
+            { $match: query },
+            {
+              $group: {
+                _id: '$performedBy',
+                count: { $sum: 1 },
+              },
             },
-          },
-          { $sort: { count: -1 } },
-          { $limit: 10 },
-          {
-            $lookup: {
-              from: 'users',
-              localField: '_id',
-              foreignField: '_id',
-              as: 'user',
+            { $sort: { count: -1 } },
+            { $limit: 10 },
+            {
+              $lookup: {
+                from: 'users',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'user',
+              },
             },
-          },
-          { $unwind: '$user' },
-          {
-            $project: {
-              _id: 1,
-              count: 1,
-              userName: '$user.name',
-              userEmail: '$user.email',
+            { $unwind: '$user' },
+            {
+              $project: {
+                _id: 1,
+                count: 1,
+                userName: '$user.name',
+                userEmail: '$user.email',
+              },
             },
-          },
-        ]),
-      ]);
+          ]),
+          // Dashboard stats: count students
+          Student.countDocuments(),
+          // Dashboard stats: count active subjects
+          Subject.countDocuments({ isActive: true }),
+          // Dashboard stats: count records created today
+          Record.countDocuments({
+            createdAt: {
+              $gte: today,
+              $lt: tomorrow,
+            },
+          }),
+        ]);
 
       return {
+        // Dashboard stats for frontend
+        totalStudents,
+        totalSubjects,
+        totalRecords: total,
+        todayRecords,
+        // Detailed record stats
         total,
         byType: byType.reduce((acc, item) => {
           acc[item._id] = item.count;

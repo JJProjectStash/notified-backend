@@ -11,39 +11,129 @@ const logger = require('./logger');
 
 class EmailUtil {
   constructor() {
-    this.transporter = nodemailer.createTransport({
+    this.transporter = null;
+    this.initializeTransporter();
+  }
+
+  /**
+   * Initialize or reinitialize the email transporter
+   */
+  initializeTransporter() {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const emailPort = parseInt(process.env.EMAIL_PORT, 10) || 587;
+
+    // Determine secure setting based on port
+    // Port 465 uses implicit TLS (secure: true)
+    // Port 587 uses STARTTLS (secure: false, but upgrades via tls options)
+    const useSecure = emailPort === 465;
+
+    const transportConfig = {
       host: process.env.EMAIL_HOST,
-      port: process.env.EMAIL_PORT,
-      secure: false, // true for 465, false for other ports
+      port: emailPort,
+      secure: useSecure,
       auth: {
         user: process.env.EMAIL_USERNAME,
         pass: process.env.EMAIL_PASSWORD,
       },
-    });
+      // Connection timeout settings for production reliability
+      connectionTimeout: 30000, // 30 seconds to establish connection
+      greetingTimeout: 30000, // 30 seconds for SMTP greeting
+      socketTimeout: 60000, // 60 seconds for socket inactivity
+      // Connection pool settings
+      pool: isProduction, // Enable pooling in production
+      maxConnections: isProduction ? 5 : 1, // Max concurrent connections
+      maxMessages: isProduction ? 100 : 10, // Max messages per connection
+      rateDelta: 1000, // Time window for rate limiting
+      rateLimit: isProduction ? 10 : 5, // Max emails per rateDelta
+      // TLS settings for production
+      tls: {
+        // Allow self-signed certificates in development
+        rejectUnauthorized: isProduction,
+        // Use modern TLS
+        minVersion: 'TLSv1.2',
+      },
+      // Debug logging in development
+      debug: !isProduction,
+      logger: !isProduction,
+    };
+
+    this.transporter = nodemailer.createTransport(transportConfig);
+
+    logger.info(
+      `Email transporter initialized (${isProduction ? 'production' : 'development'} mode, port ${emailPort})`
+    );
   }
 
   /**
-   * Send email
+   * Send email with retry logic
    * @param {Object} options - Email options { to, subject, text, html }
+   * @param {Number} retries - Number of retry attempts
    * @returns {Promise<Object>} Send result
    */
-  async sendEmail(options) {
-    try {
-      const mailOptions = {
-        from: process.env.EMAIL_FROM || 'Notified <noreply@notified.com>',
-        to: options.to,
-        subject: options.subject,
-        text: options.text,
-        html: options.html,
-      };
+  async sendEmail(options, retries = 3) {
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'Notified <noreply@notified.com>',
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    };
 
-      const info = await this.transporter.sendMail(mailOptions);
-      logger.info(`Email sent successfully to ${options.to}`);
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      logger.error(`Email send error: ${error.message}`);
-      throw new Error(`Failed to send email: ${error.message}`);
+    let lastError;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const info = await this.transporter.sendMail(mailOptions);
+        logger.info(`Email sent successfully to ${options.to} (attempt ${attempt})`);
+        return { success: true, messageId: info.messageId };
+      } catch (error) {
+        lastError = error;
+        logger.warn(`Email send attempt ${attempt}/${retries} failed: ${error.message}`);
+
+        // If it's a connection error and we have retries left, try reinitializing
+        if (attempt < retries && this.isConnectionError(error)) {
+          logger.info('Reinitializing email transporter...');
+          this.initializeTransporter();
+          // Wait before retry with exponential backoff
+          await this.delay(Math.pow(2, attempt) * 1000);
+        } else if (attempt < retries) {
+          // Simple delay for other errors
+          await this.delay(1000 * attempt);
+        }
+      }
     }
+
+    logger.error(`Email send error after ${retries} attempts: ${lastError.message}`);
+    throw new Error(`Failed to send email: ${lastError.message}`);
+  }
+
+  /**
+   * Check if error is a connection-related error
+   * @param {Error} error - The error to check
+   * @returns {boolean} True if connection error
+   */
+  isConnectionError(error) {
+    const connectionErrors = [
+      'ECONNECTION',
+      'ETIMEDOUT',
+      'ECONNRESET',
+      'ECONNREFUSED',
+      'ESOCKET',
+      'Connection timeout',
+      'ENOTFOUND',
+    ];
+    return connectionErrors.some(
+      (errType) => error.message.includes(errType) || error.code === errType
+    );
+  }
+
+  /**
+   * Delay helper for retry logic
+   * @param {Number} ms - Milliseconds to wait
+   * @returns {Promise<void>}
+   */
+  delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
