@@ -11,10 +11,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.js\"",
     "test": "jest --coverage",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
     "seed-sample-data": "node scripts/seed-sample-data.js",
-    "cleanup-db": "node scripts/cleanup-db.js",
-    "seed-sample-data": "node scripts/seed-sample-data.js"
+    "cleanup-db": "node scripts/cleanup-db.js"
   },
   "keywords": [
     "attendance",
