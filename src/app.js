@@ -31,6 +31,10 @@ const recordRoutes = require('./routes/recordRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const emailRoutes = require('./routes/emailRoutes');
 const pingRoutes = require('./routes/pingRoutes');
+const alertRoutes = require('./routes/alertRoutes');
+
+// Import background jobs
+const { initializeJobs } = require('./jobs/backgroundJobs');
 
 const app = express();
 
@@ -121,6 +125,7 @@ app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/records', recordRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/emails', emailRoutes);
+app.use('/api/v1/alerts', alertRoutes);
 
 // Root Route
 app.get('/', (req, res) => {
@@ -142,6 +147,9 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   logger.info(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+
+  // Initialize background jobs after server starts
+  initializeJobs();
 });
 
 // Handle unhandled promise rejections

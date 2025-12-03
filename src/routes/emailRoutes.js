@@ -7,13 +7,10 @@
  */
 
 const express = require('express');
-const { body } = require('express-validator');
+const { body, param } = require('express-validator');
 const router = express.Router();
 const emailController = require('../controllers/emailController');
-const { protect, restrictTo, validate } = require('../middleware');
-
-// All routes require authentication
-router.use(protect);
+const { protect, restrictTo, validate, requireAdmin } = require('../middleware');
 
 // Validation rules
 const sendSingleEmailValidation = [
@@ -102,12 +99,85 @@ const testEmailValidation = [
     .normalizeEmail(),
 ];
 
+const sendHtmlValidation = [
+  body('to').notEmpty().withMessage('Recipient(s) required'),
+  body('subject')
+    .trim()
+    .notEmpty()
+    .withMessage('Email subject is required')
+    .isLength({ max: 200 })
+    .withMessage('Subject cannot exceed 200 characters'),
+  body('html').notEmpty().withMessage('HTML content is required'),
+  body('text').optional().isString(),
+  body('attachments').optional().isArray(),
+  body('tags').optional().isArray(),
+];
+
+const scheduleEmailValidation = [
+  body('to').notEmpty().withMessage('Recipient(s) required'),
+  body('subject').trim().notEmpty().withMessage('Email subject is required'),
+  body('html').notEmpty().withMessage('HTML content is required'),
+  body('scheduledAt')
+    .notEmpty()
+    .withMessage('Scheduled time is required')
+    .isISO8601()
+    .withMessage('Invalid date format'),
+  body('text').optional().isString(),
+  body('attachments').optional().isArray(),
+  body('tags').optional().isArray(),
+];
+
+const rescheduleValidation = [
+  body('scheduledAt')
+    .notEmpty()
+    .withMessage('New scheduled time is required')
+    .isISO8601()
+    .withMessage('Invalid date format'),
+];
+
+const unsubscribeValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email address is required')
+    .isEmail()
+    .withMessage('Invalid email format')
+    .normalizeEmail(),
+  body('reason').optional().isString(),
+  body('token').optional().isString(),
+];
+
+// ==========================================
+// Public Routes (no authentication required)
+// ==========================================
+
+/**
+ * @route   POST /api/v1/emails/unsubscribes
+ * @desc    Unsubscribe an email (public for unsubscribe links)
+ * @access  Public
+ */
+router.post('/unsubscribes', unsubscribeValidation, validate, emailController.unsubscribe);
+
+// All remaining routes require authentication
+router.use(protect);
+
+// ==========================================
+// Authenticated Routes
+// ==========================================
+
 /**
  * @route   POST /api/v1/emails/send
  * @desc    Send single email
  * @access  Private
  */
 router.post('/send', sendSingleEmailValidation, validate, emailController.sendSingleEmail);
+
+/**
+ * @route   POST /api/v1/emails/send-html
+ * @desc    Send HTML email
+ * @access  Private
+ */
+router.post('/send-html', sendHtmlValidation, validate, emailController.sendHtml);
 
 /**
  * @route   POST /api/v1/emails/send-bulk
@@ -133,6 +203,94 @@ router.post(
   validate,
   emailController.sendGuardianEmail
 );
+
+/**
+ * @route   POST /api/v1/emails/schedule
+ * @desc    Schedule an email for future delivery
+ * @access  Private
+ */
+router.post('/schedule', scheduleEmailValidation, validate, emailController.schedule);
+
+/**
+ * @route   GET /api/v1/emails/scheduled
+ * @desc    Get scheduled emails
+ * @access  Private
+ */
+router.get('/scheduled', emailController.getScheduled);
+
+/**
+ * @route   DELETE /api/v1/emails/scheduled/:emailId
+ * @desc    Cancel a scheduled email
+ * @access  Private
+ */
+router.delete(
+  '/scheduled/:emailId',
+  param('emailId').isMongoId().withMessage('Invalid email ID'),
+  validate,
+  emailController.cancelScheduled
+);
+
+/**
+ * @route   PUT /api/v1/emails/scheduled/:emailId
+ * @desc    Reschedule an email
+ * @access  Private
+ */
+router.put(
+  '/scheduled/:emailId',
+  param('emailId').isMongoId().withMessage('Invalid email ID'),
+  rescheduleValidation,
+  validate,
+  emailController.reschedule
+);
+
+/**
+ * @route   GET /api/v1/emails/bounces
+ * @desc    Get bounced emails list
+ * @access  Private
+ */
+router.get('/bounces', emailController.getBounces);
+
+/**
+ * @route   GET /api/v1/emails/bounces/check/:email
+ * @desc    Check if an email is bounced
+ * @access  Private
+ */
+router.get('/bounces/check/:email', emailController.checkBounce);
+
+/**
+ * @route   DELETE /api/v1/emails/bounces/:email
+ * @desc    Remove email from bounce list
+ * @access  Private (Admin)
+ */
+router.delete('/bounces/:email', requireAdmin, emailController.removeBounce);
+
+/**
+ * @route   GET /api/v1/emails/unsubscribes
+ * @desc    Get unsubscribed emails list
+ * @access  Private
+ */
+router.get('/unsubscribes', emailController.getUnsubscribes);
+
+/**
+ * @route   GET /api/v1/emails/unsubscribes/check/:email
+ * @desc    Check if an email is unsubscribed
+ * @access  Private
+ */
+router.get('/unsubscribes/check/:email', emailController.checkUnsubscribe);
+
+/**
+ * @route   DELETE /api/v1/emails/unsubscribes/:email
+ * @desc    Resubscribe an email
+ * @access  Private (Admin)
+ */
+router.delete('/unsubscribes/:email', requireAdmin, emailController.resubscribe);
+
+/**
+ * @route   GET /api/v1/emails/stats
+ * @desc    Get email statistics
+ * @access  Private
+ */
+router.get('/stats', emailController.getStats);
 
 /**
  * @route   GET /api/v1/emails/config

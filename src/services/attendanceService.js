@@ -549,18 +549,21 @@ class AttendanceService {
       // Unmarked is totalEnrolled - totalMarked (cap at 0)
       const unmarked = Math.max(0, totalEnrolled - stats.totalMarked);
 
+      // Calculate attendance rate (present + late as attended)
+      const marked = stats.present + stats.absent + stats.late + stats.excused;
       const attendanceRate =
-        totalEnrolled > 0 ? ((stats.present / totalEnrolled) * 100).toFixed(2) : '0.00';
+        marked > 0 ? Math.round(((stats.present + stats.late) / marked) * 100) : 0;
 
       return {
         date: today.toISOString(),
-        totalEnrolled,
-        totalMarked: stats.totalMarked,
         present: stats.present || 0,
         absent: stats.absent || 0,
         late: stats.late || 0,
         excused: stats.excused || 0,
         unmarked,
+        total: totalEnrolled,
+        totalEnrolled,
+        totalMarked: stats.totalMarked,
         attendanceRate,
       };
     } catch (error) {

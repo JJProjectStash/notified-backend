@@ -13,6 +13,11 @@ const Attendance = require('./Attendance');
 const Record = require('./Record');
 const Notification = require('./Notification');
 const Enrollment = require('./Enrollment');
+const Alert = require('./Alert');
+const AlertConfig = require('./AlertConfig');
+const ScheduledEmail = require('./ScheduledEmail');
+const EmailBounce = require('./EmailBounce');
+const Unsubscribe = require('./Unsubscribe');
 
 module.exports = {
   User,
@@ -22,4 +27,9 @@ module.exports = {
   Record,
   Notification,
   Enrollment,
+  Alert,
+  AlertConfig,
+  ScheduledEmail,
+  EmailBounce,
+  Unsubscribe,
 };
