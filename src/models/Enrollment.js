@@ -39,8 +39,10 @@ const enrollmentSchema = new mongoose.Schema(
       virtuals: true,
       transform: function (doc, ret) {
         ret.id = ret._id.toString();
-        ret.studentId = ret.student;
-        ret.subjectId = ret.subject;
+        // Handle populated vs unpopulated student field
+        ret.studentId = ret.student && ret.student._id ? ret.student._id.toString() : (ret.student ? ret.student.toString() : null);
+        // Handle populated vs unpopulated subject field  
+        ret.subjectId = ret.subject && ret.subject._id ? ret.subject._id.toString() : (ret.subject ? ret.subject.toString() : null);
         delete ret._id;
         delete ret.__v;
         return ret;
@@ -50,8 +52,10 @@ const enrollmentSchema = new mongoose.Schema(
       virtuals: true,
       transform: function (doc, ret) {
         ret.id = ret._id.toString();
-        ret.studentId = ret.student;
-        ret.subjectId = ret.subject;
+        // Handle populated vs unpopulated student field
+        ret.studentId = ret.student && ret.student._id ? ret.student._id.toString() : (ret.student ? ret.student.toString() : null);
+        // Handle populated vs unpopulated subject field  
+        ret.subjectId = ret.subject && ret.subject._id ? ret.subject._id.toString() : (ret.subject ? ret.subject.toString() : null);
         delete ret._id;
         delete ret.__v;
         return ret;
