@@ -23,11 +23,13 @@ exports.markSubjectAttendance = asyncHandler(async (req, res) => {
     req.user.id
   );
 
-  // Use the correct pattern for ApiResponse
+  // attendance may be returned as { attendance, isUpdate } for consistency
+  const result = attendance.attendance ? attendance.attendance : attendance;
+
   res.status(201).json({
     success: true,
     message: 'Attendance marked successfully',
-    data: attendance,
+    data: result,
     timestamp: new Date().toISOString(),
   });
 });
@@ -72,7 +74,14 @@ exports.bulkMarkSubjectAttendance = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: `Bulk attendance marked: ${result.successful.length}/${result.total} successful`,
-    data: result,
+    data: {
+      updated: result.summary?.updated || 0,
+      created: result.summary?.created || 0,
+      total: result.total,
+      records: result.records || [],
+      successful: result.successful,
+      failed: result.failed,
+    },
     timestamp: new Date().toISOString(),
   });
 });

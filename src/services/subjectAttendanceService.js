@@ -138,11 +138,14 @@ class SubjectAttendanceService {
       );
 
       // Return populated attendance immediately without waiting for emails
-      return await Attendance.findById(attendance._id)
+      // Include isUpdate flag so callers know whether the record was created or updated
+      const populatedAttendance = await Attendance.findById(attendance._id)
         .populate('student', 'studentNumber firstName lastName email')
         .populate('subject', 'subjectCode subjectName')
         .populate('markedBy', 'name email')
         .lean();
+
+      return { attendance: populatedAttendance, isUpdate };
     } catch (error) {
       logger.error('Error in markSubjectAttendance:', error.message);
       throw error;
@@ -233,9 +236,11 @@ class SubjectAttendanceService {
             userId
           );
 
+          // attendance now returns { attendance, isUpdate }
           results.successful.push({
             studentId: data.studentId,
-            attendance,
+            attendance: attendance.attendance,
+            isUpdate: attendance.isUpdate,
           });
         } catch (error) {
           results.failed.push({
@@ -248,6 +253,18 @@ class SubjectAttendanceService {
       logger.info(
         `Bulk attendance marked for subject ${subjectId}: ${results.successful.length}/${results.total} successful`
       );
+
+      // Summarize created vs updated
+      const updated = results.successful.filter((r) => r.isUpdate).length;
+      const created = results.successful.filter((r) => !r.isUpdate).length;
+      results.summary = { updated, created };
+      // Return records with essential fields
+      results.records = results.successful.map((r) => ({
+        _id: r.attendance._id,
+        student: r.attendance.student,
+        status: r.attendance.status,
+        markedBy: r.attendance.markedBy,
+      }));
 
       return results;
     } catch (error) {
@@ -293,7 +310,47 @@ class SubjectAttendanceService {
         .sort({ 'student.studentNumber': 1 })
         .lean();
 
-      return records;
+      // Get all enrolled students for this subject
+      const enrollments = await Enrollment.find({ subject: subjectId, isActive: true }).populate(
+        'student',
+        'studentNumber firstName lastName email'
+      );
+
+      // Create map of attendance by student id
+      const attendanceMap = new Map();
+      records.forEach((record) => {
+        if (record.student && record.student._id) {
+          attendanceMap.set(record.student._id.toString(), record);
+        }
+      });
+
+      // Build students array including unmarked
+      const stats = { present: 0, absent: 0, late: 0, excused: 0, unmarked: 0, total: 0 };
+      const students = enrollments.map((enrollment) => {
+        const student = enrollment.student;
+        const attendance = attendanceMap.get(student._id.toString());
+        const status = attendance ? attendance.status : 'unmarked';
+        if (stats.hasOwnProperty(status)) stats[status]++;
+        stats.total++;
+
+        return {
+          _id: student._id,
+          studentId: student.studentNumber,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          email: student.email,
+          status,
+          markedAt: attendance ? attendance.updatedAt || attendance.createdAt : null,
+          markedBy: attendance ? attendance.markedBy : null,
+        };
+      });
+
+      return {
+        subjectId: subject._id,
+        date: targetDate.toISOString(),
+        students,
+        stats,
+      };
     } catch (error) {
       logger.error('Error in getSubjectAttendanceByDate:', error);
       throw error;
@@ -318,7 +375,9 @@ class SubjectAttendanceService {
       const targetDate = new Date(date);
       targetDate.setHours(0, 0, 0, 0);
 
-      const records = await this.getSubjectAttendanceByDate(subjectId, date);
+      const result = await this.getSubjectAttendanceByDate(subjectId, date);
+
+      const studentsList = Array.isArray(result) ? result : result.students || [];
 
       const totalEnrolled = await Enrollment.countDocuments({
         subject: subjectId,
@@ -330,14 +389,14 @@ class SubjectAttendanceService {
         subjectCode: subject.subjectCode,
         subjectName: subject.subjectName,
         totalEnrolled,
-        totalMarked: records.length,
+        totalMarked: studentsList.filter((s) => s.status && s.status !== 'unmarked').length,
         present: 0,
         absent: 0,
         late: 0,
         excused: 0,
       };
 
-      records.forEach((record) => {
+      studentsList.forEach((record) => {
         if (record.status === ATTENDANCE_STATUS.PRESENT) summary.present++;
         else if (record.status === ATTENDANCE_STATUS.ABSENT) summary.absent++;
         else if (record.status === ATTENDANCE_STATUS.LATE) summary.late++;

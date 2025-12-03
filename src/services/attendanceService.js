@@ -1,7 +1,7 @@
 const ExcelJS = require('exceljs');
 const fs = require('fs').promises;
 const mongoose = require('mongoose');
-const { Attendance, Student, Subject, Record, Notification } = require('../models');
+const { Attendance, Student, Subject, Record, Notification, Enrollment } = require('../models');
 const {
   RECORD_TYPES,
   ATTENDANCE_STATUS,
@@ -481,6 +481,90 @@ class AttendanceService {
       return records;
     } catch (error) {
       logger.error('Error in getTodayAttendance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get today's attendance across all subjects
+   * @returns {Promise<Array>} Today's attendance records
+   */
+  async getAllTodayAttendance() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+      const records = await Attendance.find({
+        date: { $gte: today, $lt: endOfDay },
+      })
+        .populate('student', 'studentNumber firstName lastName section email')
+        .populate('subject', 'subjectCode subjectName')
+        .populate('markedBy', 'name email')
+        .sort({ subject: 1, student: 1 })
+        .lean();
+
+      return records;
+    } catch (error) {
+      logger.error('Error in getAllTodayAttendance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get aggregated attendance statistics for today across all subjects
+   * @returns {Promise<Object>} Today's attendance stats
+   */
+  async getTodayStats() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
+
+      // Count all enrolments (active) - counts each student-subject enrollment
+      const totalEnrolled = await Enrollment.countDocuments({ isActive: true });
+
+      // Aggregate attendance counts by status
+      const statsAgg = await Attendance.aggregate([
+        {
+          $match: {
+            date: { $gte: today, $lte: endOfDay },
+          },
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const stats = { present: 0, absent: 0, late: 0, excused: 0, totalMarked: 0 };
+      statsAgg.forEach((s) => {
+        const key = s._id || 'unmarked';
+        stats[key] = s.count;
+        stats.totalMarked += s.count;
+      });
+
+      // Unmarked is totalEnrolled - totalMarked (cap at 0)
+      const unmarked = Math.max(0, totalEnrolled - stats.totalMarked);
+
+      const attendanceRate =
+        totalEnrolled > 0 ? ((stats.present / totalEnrolled) * 100).toFixed(2) : '0.00';
+
+      return {
+        date: today.toISOString(),
+        totalEnrolled,
+        totalMarked: stats.totalMarked,
+        present: stats.present || 0,
+        absent: stats.absent || 0,
+        late: stats.late || 0,
+        excused: stats.excused || 0,
+        unmarked,
+        attendanceRate,
+      };
+    } catch (error) {
+      logger.error('Error in getTodayStats:', error);
       throw error;
     }
   }

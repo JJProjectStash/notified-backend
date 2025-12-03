@@ -158,6 +158,25 @@ exports.getTodayAttendance = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Get today's attendance across all subjects
+ * @route GET /api/v1/attendance/today
+ */
+exports.getAllTodayAttendance = asyncHandler(async (req, res) => {
+  const records = await attendanceService.getAllTodayAttendance();
+  res.json(ApiResponse.success(records, "Today's attendance retrieved successfully"));
+});
+
+/**
+ * Get aggregated attendance statistics for today
+ * @route GET /api/v1/attendance/today/stats
+ * @access Private
+ */
+exports.getTodayStats = asyncHandler(async (req, res) => {
+  const stats = await attendanceService.getTodayStats();
+  res.json(ApiResponse.success(stats, "Today's attendance statistics retrieved successfully"));
+});
+
+/**
  * Bulk mark attendance
  * @route POST /api/v1/attendance/bulk-mark
  * @access Private (Staff)

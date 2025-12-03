@@ -246,6 +246,8 @@ router.get('/student/:studentId/summary', attendanceController.getAttendanceSumm
 router.get('/student/:studentId', attendanceController.getStudentAttendance);
 router.get('/subject/:subjectId/today', attendanceController.getTodayAttendance);
 router.get('/subject/:subjectId', attendanceController.getSubjectAttendance);
+router.get('/today', attendanceController.getAllTodayAttendance);
+router.get('/today/stats', attendanceController.getTodayStats);
 router.post(
   '/',
   requireStaff,

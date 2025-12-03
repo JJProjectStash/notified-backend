@@ -335,7 +335,7 @@ curl -X POST http://localhost:5000/api/v1/attendance/import/excel \
 
 **Response (201 Created):**
 
-```json
+````json
 {
   "success": true,
   "message": "Attendance imported successfully",
@@ -349,12 +349,80 @@ curl -X POST http://localhost:5000/api/v1/attendance/import/excel \
         "studentId": "507f1f77bcf86cd799439016",
         "error": "Student not found"
       },
+
+      ### 9. Get Today's Attendance Stats
+
+      **GET** `/api/v1/attendance/today/stats`
+
+      Get today's aggregated attendance statistics across all subjects and enrollments.
+
+      **Authentication:** Required
+
+      **Response (200 OK):**
+
+      ```json
       {
+        "success": true,
+        "message": "Today's attendance statistics retrieved successfully",
+        "data": {
+          "date": "2025-11-16T00:00:00.000Z",
+          "totalEnrolled": 120,
+          "totalMarked": 110,
+          "present": 102,
+          "absent": 5,
+          "late": 2,
+          "excused": 1,
+          "unmarked": 10,
+          "attendanceRate": "85.00"
+        }
+      }
+      ```
+
         "studentId": "507f1f77bcf86cd799439017",
         "error": "Attendance already exists for this date"
       }
     ]
   }
+}
+````
+
+---
+
+### 10. Get Today's Attendance Records
+
+**GET** `/api/v1/attendance/today`
+
+Get all attendance entries recorded today across all subjects. Useful for dashboards or admin views.
+
+**Authentication:** Required
+
+**Response (200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Today's attendance retrieved successfully",
+  "data": [
+    {
+      "_id": "507f1f...",
+      "student": {
+        "_id": "507f1f...",
+        "studentNumber": "2024001",
+        "firstName": "John",
+        "lastName": "Doe"
+      },
+      "subject": {
+        "_id": "507f1f...",
+        "subjectCode": "CS101",
+        "subjectName": "Intro to Programming"
+      },
+      "date": "2025-11-16T00:00:00.000Z",
+      "status": "present",
+      "timeSlot": "arrival",
+      "markedBy": { "_id": "507f1f...", "name": "Jane Smith" },
+      "createdAt": "2025-11-16T10:30:00.000Z"
+    }
+  ]
 }
 ```
 
@@ -639,6 +707,7 @@ JWT_SECRET=your_jwt_secret
 For frontend integration, see `ATTENDANCE_INTEGRATION.md` in the frontend documentation.
 
 Notes for Frontend implementers:
+
 - The Students page contains the Import Excel UI and Download Template (not the Attendance page). The Attendance page shows attendance records and export actions only.
 - When POST /api/v1/attendance returns `409` (Conflict), the response includes the existing attendance document in `data` to let the UI open an edit modal or confirm overwriting.
 
