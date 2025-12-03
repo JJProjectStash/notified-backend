@@ -34,6 +34,12 @@ const pingRoutes = require('./routes/pingRoutes');
 
 const app = express();
 
+// Trust proxy - Required when running behind a reverse proxy (Render, Heroku, AWS ELB, Nginx, etc.)
+// This allows express-rate-limit and other middleware to correctly identify client IPs
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // Trust first proxy
+}
+
 // Connect to Database
 connectDB();
 
