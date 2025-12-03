@@ -95,60 +95,63 @@ exports.getSubjectAttendanceByDate = asyncHandler(async (req, res) => {
   const { id: subjectId, date } = req.params;
   const { scheduleSlot } = req.query;
 
-  const result = await subjectAttendanceService.getSubjectAttendanceByDate(
-    subjectId,
-    date,
-    scheduleSlot
-  );
+  // Query attendance records directly from the database
+  const { Attendance } = require('../models');
 
-  // Transform the service response to match frontend expectations
-  // Frontend expects an array of attendance records with specific fields
-  let records = [];
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
 
-  if (result) {
-    if (Array.isArray(result)) {
-      // If service returns an array directly, use it
-      records = result;
-    } else if (result.students && Array.isArray(result.students)) {
-      // Transform students array to attendance records format
-      records = result.students
-        .filter((student) => student.status && student.status !== 'unmarked')
-        .map((student) => ({
-          id: student._id?.toString() || student.id,
-          studentId: student._id?.toString() || student.id,
-          subjectId: result.subjectId?.toString() || subjectId,
-          date: result.date || date,
-          status: student.status,
-          scheduleSlot: student.scheduleSlot || scheduleSlot || null,
-          timeSlot: student.timeSlot || null,
-          remarks: student.remarks || null,
-          notes: student.notes || null,
-          createdAt: student.markedAt || new Date().toISOString(),
-          updatedAt: student.markedAt || new Date().toISOString(),
-          // Include student details for convenience
-          student: {
-            _id: student._id,
-            studentNumber: student.studentId,
-            firstName: student.firstName,
-            lastName: student.lastName,
-            email: student.email,
-          },
-          markedBy: student.markedBy,
-        }));
-    } else if (result.records && Array.isArray(result.records)) {
-      // If service returns { records: [...] } format
-      records = result.records;
-    }
+  const query = {
+    subject: subjectId,
+    date: {
+      $gte: targetDate,
+      $lt: new Date(targetDate.getTime() + 24 * 60 * 60 * 1000),
+    },
+  };
+
+  // Only add scheduleSlot filter if provided and not empty
+  if (scheduleSlot && scheduleSlot.trim()) {
+    query.scheduleSlot = scheduleSlot;
   }
 
-  // Always return an array, even if empty
+  const records = await Attendance.find(query)
+    .populate('student', 'studentNumber firstName lastName email section guardianEmail')
+    .populate('markedBy', 'name email')
+    .lean();
+
+  // Transform to ensure consistent format for frontend
+  const transformedRecords = records.map((record) => ({
+    id: record._id.toString(),
+    _id: record._id.toString(),
+    // CRITICAL: studentId must be the student's MongoDB ObjectId (string)
+    studentId: record.student?._id?.toString() || record.student?.toString(),
+    subjectId: record.subject?.toString() || subjectId,
+    date: record.date,
+    status: record.status,
+    scheduleSlot: record.scheduleSlot || null,
+    timeSlot: record.timeSlot || null,
+    remarks: record.remarks || null,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    markedBy: record.markedBy,
+    // Include student details for display
+    student: record.student
+      ? {
+          _id: record.student._id?.toString(),
+          id: record.student._id?.toString(),
+          studentNumber: record.student.studentNumber,
+          firstName: record.student.firstName,
+          lastName: record.student.lastName,
+          email: record.student.email,
+        }
+      : null,
+  }));
+
   res.json({
     success: true,
     message: 'Attendance records retrieved successfully',
-    data: records,
-    count: records.length,
-    // Include summary stats if available
-    stats: result?.stats || null,
+    data: transformedRecords,
+    count: transformedRecords.length,
     timestamp: new Date().toISOString(),
   });
 });
