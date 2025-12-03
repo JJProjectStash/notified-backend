@@ -127,7 +127,8 @@ class SubjectAttendanceService {
           subject,
           attendance,
           scheduleSlot,
-          isUpdate
+          isUpdate,
+          userId
         ).catch((emailError) => {
           logger.error('Failed to send attendance notification email:', emailError);
         });
@@ -156,7 +157,14 @@ class SubjectAttendanceService {
    * Send attendance notifications to student and guardian
    * @private
    */
-  async _sendAttendanceNotifications(student, subject, attendance, scheduleSlot, isUpdate = false) {
+  async _sendAttendanceNotifications(
+    student,
+    subject,
+    attendance,
+    scheduleSlot,
+    isUpdate = false,
+    userId = null
+  ) {
     const scheduleInfo = scheduleSlot ? ` - ${scheduleSlot}` : '';
     const actionType = isUpdate ? 'updated' : 'marked';
     const attendanceData = {
@@ -173,27 +181,69 @@ class SubjectAttendanceService {
       studentNumber: student.studentNumber,
     };
 
+    const emailSubject = `Attendance Alert for ${student.firstName} ${student.lastName}`;
+
     // Send to student
     if (student.email) {
       try {
-        await emailUtil.sendAttendanceNotification(student.email, studentData, attendanceData);
+        const result = await emailUtil.sendAttendanceNotification(
+          student.email,
+          studentData,
+          attendanceData
+        );
         logger.info(`Attendance notification sent to student: ${student.email}`);
+
+        // Create email history record
+        await Record.create({
+          recordType: RECORD_TYPES.EMAIL_SENT,
+          recordData: `Attendance notification sent to student (${student.email}): ${emailSubject}`,
+          student: student._id,
+          subject: subject._id,
+          performedBy: userId,
+          metadata: {
+            recipient: student.email,
+            recipientType: 'student',
+            subject: emailSubject,
+            attendanceStatus: attendance.status,
+            messageId: result?.messageId,
+          },
+        });
       } catch (error) {
-        logger.error(`Failed to send notification to student ${student.email}:`, error);
+        logger.error(`Failed to send notification to student ${student.email}:`, error.message);
       }
     }
 
     // Send to guardian
     if (student.guardianEmail) {
       try {
-        await emailUtil.sendAttendanceNotification(
+        const result = await emailUtil.sendAttendanceNotification(
           student.guardianEmail,
           studentData,
           attendanceData
         );
         logger.info(`Attendance notification sent to guardian: ${student.guardianEmail}`);
+
+        // Create email history record
+        await Record.create({
+          recordType: RECORD_TYPES.EMAIL_SENT,
+          recordData: `Attendance notification sent to guardian (${student.guardianEmail}): ${emailSubject}`,
+          student: student._id,
+          subject: subject._id,
+          performedBy: userId,
+          metadata: {
+            recipient: student.guardianEmail,
+            recipientType: 'guardian',
+            guardianName: student.guardianName,
+            subject: emailSubject,
+            attendanceStatus: attendance.status,
+            messageId: result?.messageId,
+          },
+        });
       } catch (error) {
-        logger.error(`Failed to send notification to guardian ${student.guardianEmail}:`, error);
+        logger.error(
+          `Failed to send notification to guardian ${student.guardianEmail}:`,
+          error.message
+        );
       }
     }
   }
