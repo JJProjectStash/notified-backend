@@ -93,13 +93,62 @@ exports.bulkMarkSubjectAttendance = asyncHandler(async (req, res) => {
  */
 exports.getSubjectAttendanceByDate = asyncHandler(async (req, res) => {
   const { id: subjectId, date } = req.params;
+  const { scheduleSlot } = req.query;
 
-  const records = await subjectAttendanceService.getSubjectAttendanceByDate(subjectId, date);
+  const result = await subjectAttendanceService.getSubjectAttendanceByDate(
+    subjectId,
+    date,
+    scheduleSlot
+  );
 
+  // Transform the service response to match frontend expectations
+  // Frontend expects an array of attendance records with specific fields
+  let records = [];
+
+  if (result) {
+    if (Array.isArray(result)) {
+      // If service returns an array directly, use it
+      records = result;
+    } else if (result.students && Array.isArray(result.students)) {
+      // Transform students array to attendance records format
+      records = result.students
+        .filter((student) => student.status && student.status !== 'unmarked')
+        .map((student) => ({
+          id: student._id?.toString() || student.id,
+          studentId: student._id?.toString() || student.id,
+          subjectId: result.subjectId?.toString() || subjectId,
+          date: result.date || date,
+          status: student.status,
+          scheduleSlot: student.scheduleSlot || scheduleSlot || null,
+          timeSlot: student.timeSlot || null,
+          remarks: student.remarks || null,
+          notes: student.notes || null,
+          createdAt: student.markedAt || new Date().toISOString(),
+          updatedAt: student.markedAt || new Date().toISOString(),
+          // Include student details for convenience
+          student: {
+            _id: student._id,
+            studentNumber: student.studentId,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            email: student.email,
+          },
+          markedBy: student.markedBy,
+        }));
+    } else if (result.records && Array.isArray(result.records)) {
+      // If service returns { records: [...] } format
+      records = result.records;
+    }
+  }
+
+  // Always return an array, even if empty
   res.json({
     success: true,
     message: 'Attendance records retrieved successfully',
     data: records,
+    count: records.length,
+    // Include summary stats if available
+    stats: result?.stats || null,
     timestamp: new Date().toISOString(),
   });
 });
