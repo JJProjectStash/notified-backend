@@ -63,6 +63,47 @@ const cleanupOrphanedStudents = async () => {
   }
 };
 
+const cleanupOrphanedEnrollments = async () => {
+  try {
+    console.log('\n🔍 Checking for orphaned enrollment records...');
+
+    // Get all valid student IDs
+    const validStudentIds = (await Student.find({}, { _id: 1 })).map((s) => s._id.toString());
+    
+    // Get all valid subject IDs
+    const validSubjectIds = (await Subject.find({}, { _id: 1 })).map((s) => s._id.toString());
+
+    // Find all enrollments
+    const allEnrollments = await Enrollment.find({});
+
+    // Find orphaned enrollments (student or subject doesn't exist)
+    const orphanedEnrollments = allEnrollments.filter((e) => {
+      const studentId = e.student ? e.student.toString() : null;
+      const subjectId = e.subject ? e.subject.toString() : null;
+      return !studentId || !subjectId || 
+             !validStudentIds.includes(studentId) || 
+             !validSubjectIds.includes(subjectId);
+    });
+
+    console.log(`Found ${orphanedEnrollments.length} orphaned enrollment records`);
+
+    if (orphanedEnrollments.length > 0) {
+      // Remove orphaned enrollments
+      const result = await Enrollment.deleteMany({ 
+        _id: { $in: orphanedEnrollments.map(e => e._id) } 
+      });
+      console.log(`✅ Removed ${result.deletedCount} orphaned enrollment records`);
+    } else {
+      console.log('✅ No orphaned enrollment records found');
+    }
+
+    return orphanedEnrollments.length;
+  } catch (error) {
+    console.error('❌ Error cleaning orphaned enrollments:', error.message);
+    return 0;
+  }
+};
+
 const cleanupOrphanedRecords = async () => {
   try {
     console.log('\n🔍 Checking for orphaned activity records...');
@@ -189,6 +230,7 @@ const main = async () => {
 
   // Run cleanup functions
   await cleanupOrphanedStudents();
+  await cleanupOrphanedEnrollments();
   await cleanupOrphanedRecords();
   await checkDataIntegrity();
   await displayCollectionInfo();
