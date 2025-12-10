@@ -128,7 +128,7 @@ async function seedStudents(adminId) {
   for (const s of sampleStudents) {
     const year = (new Date().getFullYear() % 100).toString().padStart(2, '0');
     const studentNumber = await Student.generateNextStudentNumber(year);
-    const email = `${s.firstName.toLowerCase()}.${s.lastName.toLowerCase()}@student.edu`;
+    const email = `${s.firstName.toLowerCase().replace(/\s+/g, '')}.${s.lastName.toLowerCase().replace(/\s+/g, '')}@student.edu`;
 
     const existing = await Student.findOne({ email });
     if (existing) {
@@ -144,7 +144,7 @@ async function seedStudents(adminId) {
       email,
       section: s.section,
       guardianName: `Parent of ${s.firstName}`,
-      guardianEmail: `parent.${s.lastName.toLowerCase()}@example.com`,
+      guardianEmail: `parent.${s.lastName.toLowerCase().replace(/\s+/g, '')}@example.com`,
       createdBy: adminId,
     });
     console.log(`  ➕ Created student: ${student.studentNumber} - ${student.firstName} ${student.lastName}`);
