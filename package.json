@@ -11,8 +11,8 @@
     "format": "prettier --write \"src/**/*.js\"",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
+    "seed": "node scripts/seed-sample-data.js",
     "seed:accounts": "node scripts/seed-demo-accounts.js",
-    "seed:data": "node scripts/seed-sample-data.js",
     "db:cleanup": "node scripts/cleanup-database.js"
   },
   "keywords": [

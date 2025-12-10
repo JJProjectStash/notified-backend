@@ -1,40 +1,80 @@
 # Scripts
 
-This directory contains utility scripts for database management and seeding.
+Utility scripts for database management and seeding.
 
-## Available Scripts
+## Commands
 
-### Seed Demo Accounts
+| Command | Description |
+|---------|-------------|
+| `npm run seed` | Seeds demo accounts + sample data (subjects, students, enrollments, attendance) |
+| `npm run seed:accounts` | Seeds only demo user accounts |
+| `npm run db:cleanup` | **WIPES ALL DATA** from the database (preserves users by default) |
+
+---
+
+## Seed
+
+```bash
+npm run seed
+```
+
+Seeds the complete demo environment:
+- **5 demo user accounts** (all roles)
+- **4 subjects** (CC105, CC106, GE103, PE102)
+- **8 students** with Filipino names
+- **Enrollments** for all students in all subjects
+- **Attendance records** for the last 5 days
+
+### Seed Options
+```bash
+npm run seed -- --force   # Skip confirmation prompts
+```
+
+### Demo Account Credentials
+
+| Role | Email | Password |
+|------|-------|----------|
+| superadmin | superadmin@notified.com | SuperAdmin123! |
+| admin | admin@notified.com | Admin123! |
+| staff | staff@notified.com | Staff123! |
+| professor | professor@notified.com | Professor123! |
+| registrar | registrar@notified.com | Registrar123! |
+
+---
+
+## Seed Accounts Only
+
 ```bash
 npm run seed:accounts
 ```
-Creates demo user accounts for all roles:
-- **superadmin@notified.com** - SuperAdmin123! (Full system access)
-- **admin@notified.com** - Admin123! (Admin panel access)
-- **staff@notified.com** - Staff123! (Staff operations)
-- **professor@notified.com** - Professor123! (View/mark attendance)
-- **registrar@notified.com** - Registrar123! (Student/subject management)
 
-### Seed Sample Data
-```bash
-npm run seed:data
-```
-Creates sample students, subjects, and attendance records for development.
+Seeds only the demo user accounts without sample data. Useful for production environments where you only need admin users.
 
-**Options:**
-- `--wipe` - Remove existing sample data first
-- `--force` - Skip confirmation prompts
-- `--count=N` - Number of students to create (default: 10)
-- `--subjects=N` - Number of subjects to create (default: 3)
-- `--dry-run` - Preview changes without making them
+---
 
-### Database Cleanup
+## Database Cleanup
+
 ```bash
 npm run db:cleanup
 ```
-Cleans up orphaned records and checks data integrity:
-- Finds and optionally removes orphaned student records
-- Checks for orphaned activity records
-- Verifies data integrity (duplicates, missing fields)
-- Reindexes collections
-- Displays database statistics
+
+⚠️ **WARNING**: This deletes ALL data from the database!
+
+Deletes:
+- All attendance records
+- All enrollments
+- All activity records
+- All students
+- All subjects
+
+**Users are preserved** by default. To also delete users:
+
+```bash
+npm run db:cleanup -- --include-users
+```
+
+### Cleanup Options
+```bash
+npm run db:cleanup -- --force          # Skip confirmation prompt
+npm run db:cleanup -- --include-users  # Also delete user accounts
+```
