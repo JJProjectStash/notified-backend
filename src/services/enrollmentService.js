@@ -228,12 +228,17 @@ class EnrollmentService {
     const studentObj = enrollment.student || {};
     const studentId = studentObj._id || enrollment.student;
 
+    // Handle subject - it might be populated or just an ID
+    const subjectObj = enrollment.subject || {};
+    const subjectId = subjectObj._id || enrollment.subject;
+
     return {
       id: enrollment._id,
       studentId: studentId,
-      subjectId: enrollment.subject,
+      subjectId: subjectId,
       enrolledAt: enrollment.enrollmentDate,
       student: studentObj,
+      subject: subjectObj, // Include full subject object for frontend
       enrolledBy: enrollment.enrolledBy,
     };
   }
