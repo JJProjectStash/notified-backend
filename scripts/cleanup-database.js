@@ -1,15 +1,26 @@
 /**
  * Database Cleanup Script
- * Removes orphaned records and fixes data integrity issues
+ * Wipes all data from the database (students, subjects, enrollments, attendance, records)
+ * Preserves user accounts.
+ *
+ * Usage: npm run db:cleanup
+ *        npm run db:cleanup -- --include-users  (also wipes users except for your own)
  *
  * @author Notified Development Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 require('dotenv').config();
 const mongoose = require('mongoose');
+const readline = require('readline');
 const logger = require('../src/utils/logger');
 const { Student, Subject, Record, User, Enrollment, Attendance } = require('../src/models');
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const ask = (question) => new Promise((resolve) => rl.question(question, (a) => resolve(a)));
+
+const INCLUDE_USERS = process.argv.includes('--include-users');
+const FORCE = process.argv.includes('--force') || process.argv.includes('-f');
 
 // Connect to database
 const connectDB = async () => {
@@ -23,230 +34,91 @@ const connectDB = async () => {
   }
 };
 
-// Cleanup functions
-const cleanupOrphanedStudents = async () => {
-  try {
-    console.log('\n🔍 Checking for orphaned student records...');
-
-    // Find students with soft delete flags
-    const softDeleted = await Student.find({
-      $or: [{ isDeleted: true }, { deleted: true }, { isActive: false }],
-    });
-
-    console.log(`Found ${softDeleted.length} soft-deleted students`);
-
-    if (softDeleted.length > 0) {
-      console.log('Students to clean:');
-      softDeleted.forEach((s) => {
-        console.log(`  - ${s.studentNumber}: ${s.firstName} ${s.lastName}`);
-      });
-
-      // Option 1: Remove them (hard delete)
-      // Uncomment the following line to permanently delete
-      // const result = await Student.deleteMany({ _id: { $in: softDeleted.map(s => s._id) } });
-      // console.log(`✅ Removed ${result.deletedCount} orphaned student records`);
-
-      // Option 2: Just remove the soft delete flags
-      const result = await Student.updateMany(
-        { _id: { $in: softDeleted.map((s) => s._id) } },
-        { $unset: { isDeleted: '', deleted: '' }, $set: { isActive: true } }
-      );
-      console.log(`✅ Cleaned ${result.modifiedCount} student records (removed soft delete flags)`);
-    } else {
-      console.log('✅ No orphaned student records found');
-    }
-
-    return softDeleted.length;
-  } catch (error) {
-    console.error('❌ Error cleaning orphaned students:', error.message);
-    return 0;
-  }
-};
-
-const cleanupOrphanedEnrollments = async () => {
-  try {
-    console.log('\n🔍 Checking for orphaned enrollment records...');
-
-    // Get all valid student IDs
-    const validStudentIds = (await Student.find({}, { _id: 1 })).map((s) => s._id.toString());
-    
-    // Get all valid subject IDs
-    const validSubjectIds = (await Subject.find({}, { _id: 1 })).map((s) => s._id.toString());
-
-    // Find all enrollments
-    const allEnrollments = await Enrollment.find({});
-
-    // Find orphaned enrollments (student or subject doesn't exist)
-    const orphanedEnrollments = allEnrollments.filter((e) => {
-      const studentId = e.student ? e.student.toString() : null;
-      const subjectId = e.subject ? e.subject.toString() : null;
-      return !studentId || !subjectId || 
-             !validStudentIds.includes(studentId) || 
-             !validSubjectIds.includes(subjectId);
-    });
-
-    console.log(`Found ${orphanedEnrollments.length} orphaned enrollment records`);
-
-    if (orphanedEnrollments.length > 0) {
-      // Remove orphaned enrollments
-      const result = await Enrollment.deleteMany({ 
-        _id: { $in: orphanedEnrollments.map(e => e._id) } 
-      });
-      console.log(`✅ Removed ${result.deletedCount} orphaned enrollment records`);
-    } else {
-      console.log('✅ No orphaned enrollment records found');
-    }
-
-    return orphanedEnrollments.length;
-  } catch (error) {
-    console.error('❌ Error cleaning orphaned enrollments:', error.message);
-    return 0;
-  }
-};
-
-const cleanupOrphanedRecords = async () => {
-  try {
-    console.log('\n🔍 Checking for orphaned activity records...');
-
-    // Get all valid student IDs
-    const validStudentIds = (await Student.find({}, { _id: 1 })).map((s) => s._id.toString());
-
-    // Find records with invalid student references
-    const orphanedRecords = await Record.find({
-      student: { $exists: true, $ne: null },
-    });
-
-    const invalidRecords = orphanedRecords.filter(
-      (r) => r.student && !validStudentIds.includes(r.student.toString())
-    );
-
-    console.log(`Found ${invalidRecords.length} orphaned activity records`);
-
-    if (invalidRecords.length > 0) {
-      // Remove orphaned records
-      const result = await Record.deleteMany({ _id: { $in: invalidRecords.map(r => r._id) } });
-      console.log(`✅ Removed ${result.deletedCount} orphaned activity records`);
-    } else {
-      console.log('✅ No orphaned activity records found');
-    }
-
-    return invalidRecords.length;
-  } catch (error) {
-    console.error('❌ Error cleaning orphaned records:', error.message);
-    return 0;
-  }
-};
-
-const checkDataIntegrity = async () => {
-  try {
-    console.log('\n🔍 Checking data integrity...');
-
-    // Check for duplicate student numbers
-    const duplicates = await Student.aggregate([
-      { $group: { _id: '$studentNumber', count: { $sum: 1 }, ids: { $push: '$_id' } } },
-      { $match: { count: { $gt: 1 } } },
-    ]);
-
-    if (duplicates.length > 0) {
-      console.log(`⚠️  Found ${duplicates.length} duplicate student numbers:`);
-      duplicates.forEach((d) => {
-        console.log(`  - ${d._id}: ${d.count} occurrences`);
-      });
-    } else {
-      console.log('✅ No duplicate student numbers found');
-    }
-
-    // Check for missing required fields
-    const missingFields = await Student.find({
-      $or: [
-        { studentNumber: { $exists: false } },
-        { email: { $exists: false } },
-        { firstName: { $exists: false } },
-        { lastName: { $exists: false } },
-      ],
-    });
-
-    if (missingFields.length > 0) {
-      console.log(`⚠️  Found ${missingFields.length} students with missing required fields`);
-    } else {
-      console.log('✅ All students have required fields');
-    }
-
-    return duplicates.length + missingFields.length;
-  } catch (error) {
-    console.error('❌ Error checking data integrity:', error.message);
-    return 0;
-  }
-};
-
-const displayCollectionInfo = async () => {
-  try {
-    console.log('\n🔍 Checking collections...');
-
-    const collections = ['students', 'subjects', 'records', 'users', 'enrollments', 'attendances'];
-
-    for (const collectionName of collections) {
-      try {
-        const collection = mongoose.connection.collection(collectionName);
-        const count = await collection.countDocuments();
-        console.log(`  ${collectionName}: ${count} documents`);
-      } catch (err) {
-        console.log(`  ${collectionName}: (not found)`);
-      }
-    }
-  } catch (error) {
-    console.error('❌ Error checking collections:', error.message);
-  }
-};
-
 const displayStats = async () => {
-  try {
-    console.log('\n📊 Database Statistics:');
+  console.log('\n📊 Database Statistics:');
+  const stats = {
+    students: await Student.countDocuments(),
+    subjects: await Subject.countDocuments(),
+    enrollments: await Enrollment.countDocuments(),
+    attendances: await Attendance.countDocuments(),
+    records: await Record.countDocuments(),
+    users: await User.countDocuments(),
+  };
+  console.log(`  Students: ${stats.students}`);
+  console.log(`  Subjects: ${stats.subjects}`);
+  console.log(`  Enrollments: ${stats.enrollments}`);
+  console.log(`  Attendances: ${stats.attendances}`);
+  console.log(`  Records: ${stats.records}`);
+  console.log(`  Users: ${stats.users}`);
+  return stats;
+};
 
-    const stats = {
-      students: await Student.countDocuments(),
-      subjects: await Subject.countDocuments(),
-      records: await Record.countDocuments(),
-      users: await User.countDocuments(),
-    };
+const wipeData = async () => {
+  console.log('\n🧹 Wiping data...');
 
-    console.log(`  Students: ${stats.students}`);
-    console.log(`  Subjects: ${stats.subjects}`);
-    console.log(`  Records: ${stats.records}`);
-    console.log(`  Users: ${stats.users}`);
-  } catch (error) {
-    console.error('❌ Error getting stats:', error.message);
+  // Delete in order (dependencies first)
+  const attendanceResult = await Attendance.deleteMany({});
+  console.log(`  ✅ Deleted ${attendanceResult.deletedCount} attendance records`);
+
+  const enrollmentResult = await Enrollment.deleteMany({});
+  console.log(`  ✅ Deleted ${enrollmentResult.deletedCount} enrollments`);
+
+  const recordResult = await Record.deleteMany({});
+  console.log(`  ✅ Deleted ${recordResult.deletedCount} activity records`);
+
+  const studentResult = await Student.deleteMany({});
+  console.log(`  ✅ Deleted ${studentResult.deletedCount} students`);
+
+  const subjectResult = await Subject.deleteMany({});
+  console.log(`  ✅ Deleted ${subjectResult.deletedCount} subjects`);
+
+  if (INCLUDE_USERS) {
+    const userResult = await User.deleteMany({});
+    console.log(`  ✅ Deleted ${userResult.deletedCount} users`);
+  } else {
+    console.log('  ℹ️  Users preserved (use --include-users to also wipe users)');
   }
 };
 
 // Main execution
 const main = async () => {
-  console.log('🧹 Starting Database Cleanup...\n');
+  console.log('🧹 Database Cleanup Script\n');
+  console.log('⚠️  WARNING: This will DELETE ALL DATA from the database!');
+  if (INCLUDE_USERS) {
+    console.log('⚠️  --include-users flag detected: Users will also be deleted!');
+  }
 
   await connectDB();
 
-  // Display initial stats
+  // Display current stats
   await displayStats();
 
-  // Run cleanup functions
-  await cleanupOrphanedStudents();
-  await cleanupOrphanedEnrollments();
-  await cleanupOrphanedRecords();
-  await checkDataIntegrity();
-  await displayCollectionInfo();
+  // Confirm deletion
+  if (!FORCE) {
+    const confirm = await ask('\n⚠️  Type "DELETE ALL" to confirm data deletion: ');
+    if (confirm.trim() !== 'DELETE ALL') {
+      console.log('❌ Aborted by user');
+      process.exit(0);
+    }
+  }
+
+  // Wipe data
+  await wipeData();
 
   // Display final stats
   await displayStats();
 
   console.log('\n✅ Database cleanup completed!');
-  console.log('⚠️  Review the output above and uncomment deletion code if needed\n');
 
+  rl.close();
   await mongoose.connection.close();
   process.exit(0);
 };
 
 // Run the script
-main().catch((error) => {
+main().catch(async (error) => {
   console.error('❌ Script failed:', error);
+  rl.close();
+  await mongoose.connection.close();
   process.exit(1);
 });

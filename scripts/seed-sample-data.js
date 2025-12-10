@@ -1,208 +1,258 @@
 #!/usr/bin/env node
 /**
- * Database Seeding Script - Sample Data
- * Create sample admin, students, subjects, and attendance records for development.
- * Safe to run multiple times; avoid creating duplicate users/students/subjects.
- * Optional flags: --wipe (remove existing sample data), --force (skip confirmation), --count (number of students, default 10), --subjects (number of subjects default 3), --dry-run
+ * Database Seeding Script
+ * Seeds demo accounts AND sample data in one command.
+ *
+ * Usage:
+ *   npm run seed              - Seeds accounts + sample data
+ *   npm run seed -- --force   - Skip confirmation prompts
+ *   npm run seed:accounts     - Seeds only demo accounts (separate script)
+ *
+ * @author Notified Development Team
+ * @version 2.0.0
  */
 
 require('dotenv').config();
 const mongoose = require('mongoose');
+const readline = require('readline');
 const connectDB = require('../src/config/database');
 const User = require('../src/models/User');
 const Student = require('../src/models/Student');
 const Subject = require('../src/models/Subject');
 const Attendance = require('../src/models/Attendance');
 const Enrollment = require('../src/models/Enrollment');
+const { ROLES } = require('../src/config/constants');
 const logger = require('../src/utils/logger');
-const readline = require('readline');
-
-// Minimal CLI parsing
-const rawArgs = process.argv.slice(2);
-const parseArg = (key) => {
-  const arg = rawArgs.find((a) => a.startsWith(`--${key}=`));
-  return arg ? arg.split('=')[1] : null;
-};
-const hasFlag = (flag) => rawArgs.includes(`--${flag}`) || rawArgs.includes(`-${flag}`);
-
-const DRY_RUN = hasFlag('dry-run') || hasFlag('d');
-const FORCE = hasFlag('force') || hasFlag('f');
-const WIPE = hasFlag('wipe') || hasFlag('w');
-const COUNT = parseInt(parseArg('count'), 10) || 10;
-const SUBJECTS = parseInt(parseArg('subjects'), 10) || 3;
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = (question) => new Promise((resolve) => rl.question(question, (a) => resolve(a)));
 
+const FORCE = process.argv.includes('--force') || process.argv.includes('-f');
+
+// ===== DEMO ACCOUNTS =====
+const demoUsers = [
+  {
+    name: 'Demo Super Admin',
+    email: 'superadmin@notified.com',
+    password: 'SuperAdmin123!',
+    role: ROLES.SUPERADMIN,
+  },
+  {
+    name: 'Demo Admin',
+    email: 'admin@notified.com',
+    password: 'Admin123!',
+    role: ROLES.ADMIN,
+  },
+  {
+    name: 'Demo Staff',
+    email: 'staff@notified.com',
+    password: 'Staff123!',
+    role: ROLES.STAFF,
+  },
+  {
+    name: 'Demo Professor',
+    email: 'professor@notified.com',
+    password: 'Professor123!',
+    role: ROLES.PROFESSOR,
+  },
+  {
+    name: 'Demo Registrar',
+    email: 'registrar@notified.com',
+    password: 'Registrar123!',
+    role: ROLES.REGISTRAR,
+  },
+];
+
+// ===== SAMPLE DATA =====
 const sampleSubjects = [
-  { subjectCode: 'MATH101', subjectName: 'Mathematics 101', yearLevel: 10, section: 'A' },
-  { subjectCode: 'ENG101', subjectName: 'English 101', yearLevel: 10, section: 'A' },
-  { subjectCode: 'SCI101', subjectName: 'Science 101', yearLevel: 10, section: 'A' },
-  { subjectCode: 'HIST101', subjectName: 'History 101', yearLevel: 10, section: 'A' },
-  { subjectCode: 'PE101', subjectName: 'PE 101', yearLevel: 10, section: 'A' },
+  { subjectCode: 'CC105', subjectName: 'Information Management', yearLevel: 2, section: '2-D' },
+  { subjectCode: 'CC106', subjectName: 'Application Development', yearLevel: 2, section: '2-D' },
+  { subjectCode: 'GE103', subjectName: 'Ethics', yearLevel: 2, section: '2-D' },
+  { subjectCode: 'PE102', subjectName: 'Physical Education 2', yearLevel: 2, section: '2-D' },
+];
+
+const sampleStudents = [
+  { firstName: 'Juan', lastName: 'Dela Cruz', section: '2-D' },
+  { firstName: 'Maria', lastName: 'Santos', section: '2-D' },
+  { firstName: 'Jose', lastName: 'Rizal', section: '2-D' },
+  { firstName: 'Andres', lastName: 'Bonifacio', section: '2-D' },
+  { firstName: 'Emilio', lastName: 'Aguinaldo', section: '2-D' },
+  { firstName: 'Gabriela', lastName: 'Silang', section: '2-D' },
+  { firstName: 'Melchora', lastName: 'Aquino', section: '2-D' },
+  { firstName: 'Antonio', lastName: 'Luna', section: '2-D' },
 ];
 
 const statuses = ['present', 'absent', 'late', 'excused'];
 
-const createAdminIfMissing = async () => {
-  const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@notified.com';
-  const adminName = process.env.DEFAULT_ADMIN_NAME || 'System Administrator';
-  const adminPass = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@123';
-
-  let admin = await User.findOne({ email: adminEmail });
-  if (admin) {
-    logger.info('Admin user already exists:', adminEmail);
-    return admin;
+async function upsertUser({ name, email, password, role }) {
+  const existing = await User.findOne({ email });
+  if (existing) {
+    console.log(`  ✔ User exists: ${email} (${existing.role})`);
+    return existing;
   }
+  const user = new User({ name, email, password, role });
+  await user.save();
+  console.log(`  ➕ Created user: ${email} (${role})`);
+  return user;
+}
 
-  if (DRY_RUN) {
-    logger.info('[DRY RUN] Would create admin:', adminEmail);
-    return null;
+async function seedAccounts() {
+  console.log('\n👤 Seeding demo accounts...');
+  for (const u of demoUsers) {
+    await upsertUser(u);
   }
+  console.log('✅ Demo accounts seeded');
+}
 
-  admin = await User.create({ name: adminName, email: adminEmail, password: adminPass, role: 'admin' });
-  logger.info('Created admin user:', adminEmail);
-  return admin;
-};
-
-const createSubjects = async (count, createdBy) => {
+async function seedSubjects(adminId) {
+  console.log('\n📚 Seeding subjects...');
   const created = [];
-  for (let i = 0; i < count; i++) {
-    const s = sampleSubjects[i] || sampleSubjects[i % sampleSubjects.length];
+  for (const s of sampleSubjects) {
     const existing = await Subject.findOne({ subjectCode: s.subjectCode });
     if (existing) {
+      console.log(`  ✔ Subject exists: ${s.subjectCode}`);
       created.push(existing);
       continue;
     }
-    if (DRY_RUN) {
-      logger.info('[DRY RUN] Would create subject', s.subjectCode);
-      continue;
-    }
-    const subj = await Subject.create({ ...s, createdBy });
+    const subj = await Subject.create({ ...s, createdBy: adminId });
+    console.log(`  ➕ Created subject: ${subj.subjectCode} - ${subj.subjectName}`);
     created.push(subj);
-    logger.info('Created subject:', subj.subjectCode);
   }
+  console.log(`✅ ${created.length} subjects ready`);
   return created;
-};
+}
 
-const createStudents = async (count, createdBy) => {
-  const students = [];
-  for (let i = 0; i < count; i++) {
-    const year = (new Date().getFullYear() % 100).toString().padStart(2, '0');
-    // generate a next number using generator
-    const number = await Student.generateNextStudentNumber(year);
-    const email = `student${number.replace('-', '')}@example.com`;
-    const existing = await Student.findOne({ studentNumber: number });
-    if (existing) {
-      students.push(existing);
-      continue;
-    }
-    if (DRY_RUN) {
-      logger.info('[DRY RUN] Would create student:', number);
-      continue;
-    }
-    const student = await Student.create({
-      studentNumber: number,
-      firstName: `FN-${number}`,
-      lastName: `LN-${number}`,
-      email,
-      section: 'A',
-      guardianName: `Parent ${number}`,
-      guardianEmail: `guardian${number.replace('-', '')}@example.com`,
-      createdBy,
-    });
-    students.push(student);
-    logger.info('Created student:', student.studentNumber);
-  }
-  return students;
-};
-
-const createAttendance = async (students, subjects, adminId, days = 3) => {
-  if (DRY_RUN) {
-    logger.info('[DRY RUN] Would create attendance records for students:', students.length, 'subjects:', subjects.length);
-    return [];
-  }
+async function seedStudents(adminId) {
+  console.log('\n🎓 Seeding students...');
   const created = [];
-  const now = new Date();
-  for (let s of students) {
-    for (let subj of subjects) {
-      for (let d = 1; d <= days; d++) {
-        const date = new Date(now);
+  for (const s of sampleStudents) {
+    const year = (new Date().getFullYear() % 100).toString().padStart(2, '0');
+    const studentNumber = await Student.generateNextStudentNumber(year);
+    const email = `${s.firstName.toLowerCase()}.${s.lastName.toLowerCase()}@student.edu`;
+
+    const existing = await Student.findOne({ email });
+    if (existing) {
+      console.log(`  ✔ Student exists: ${existing.studentNumber}`);
+      created.push(existing);
+      continue;
+    }
+
+    const student = await Student.create({
+      studentNumber,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      email,
+      section: s.section,
+      guardianName: `Parent of ${s.firstName}`,
+      guardianEmail: `parent.${s.lastName.toLowerCase()}@example.com`,
+      createdBy: adminId,
+    });
+    console.log(`  ➕ Created student: ${student.studentNumber} - ${student.firstName} ${student.lastName}`);
+    created.push(student);
+  }
+  console.log(`✅ ${created.length} students ready`);
+  return created;
+}
+
+async function seedEnrollments(students, subjects, adminId) {
+  console.log('\n📝 Seeding enrollments...');
+  let count = 0;
+  for (const student of students) {
+    for (const subject of subjects) {
+      const existing = await Enrollment.findOne({ student: student._id, subject: subject._id });
+      if (existing) continue;
+
+      await Enrollment.create({
+        student: student._id,
+        subject: subject._id,
+        enrolledBy: adminId,
+      });
+      count++;
+    }
+  }
+  console.log(`✅ ${count} enrollments created`);
+}
+
+async function seedAttendance(students, subjects, adminId) {
+  console.log('\n📅 Seeding attendance records...');
+  let count = 0;
+  const today = new Date();
+
+  for (const student of students) {
+    for (const subject of subjects) {
+      // Create attendance for the last 5 days
+      for (let d = 0; d < 5; d++) {
+        const date = new Date(today);
         date.setDate(date.getDate() - d);
         date.setHours(0, 0, 0, 0);
+
+        const existing = await Attendance.findOne({
+          student: student._id,
+          subject: subject._id,
+          date,
+        });
+        if (existing) continue;
+
         const status = statuses[Math.floor(Math.random() * statuses.length)];
-        // check if attendance exists
-        const exists = await Attendance.findOne({ student: s._id, subject: subj._id, date });
-        if (exists) continue;
-        const att = await Attendance.create({
-          student: s._id,
-          subject: subj._id,
+        await Attendance.create({
+          student: student._id,
+          subject: subject._id,
           date,
           status,
           timeSlot: 'arrival',
-          remarks: '',
           markedBy: adminId,
         });
-        created.push(att);
+        count++;
       }
     }
   }
-  logger.info(`Created ${created.length} attendance records`);
-  return created;
-};
+  console.log(`✅ ${count} attendance records created`);
+}
 
-const wipeCollections = async () => {
-  // remove sample data (students, subjects, attendance, enrollments)
-  logger.warn('Wiping sample collections: students, subjects, attendance, enrollments (this is destructive)');
-  if (DRY_RUN) return;
-  await Attendance.deleteMany({});
-  await Enrollment.deleteMany({});
-  await Student.deleteMany({});
-  await Subject.deleteMany({ subjectCode: { $in: sampleSubjects.map((s) => s.subjectCode) } });
-};
+async function main() {
+  console.log('🌱 Database Seed Script\n');
 
-const main = async () => {
   await connectDB();
-  logger.info('Connected to DB');
 
-  if (WIPE) {
-    if (!FORCE) {
-      const ans = await ask('⚠️  WIPE mode: this will delete documents in students/subjects/attendance. Type YES to proceed: ');
-      if (ans.trim() !== 'YES') {
-        logger.info('Aborted by user');
-        process.exit(0);
-      }
-    }
-    await wipeCollections();
-    logger.info('Wipe complete');
-  }
-
-  if (!FORCE && !DRY_RUN) {
-    const ans = await ask(`Seed script will create ${COUNT} students, ${SUBJECTS} subjects and attendance records. Continue? (YES) `);
-    if (ans.trim() !== 'YES') {
-      logger.info('Aborted by user');
+  // Confirm seeding
+  if (!FORCE) {
+    const confirm = await ask('This will seed demo accounts and sample data. Continue? (y/N): ');
+    if (confirm.toLowerCase() !== 'y') {
+      console.log('❌ Aborted by user');
       process.exit(0);
     }
   }
 
-  const admin = await createAdminIfMissing();
-  const createdSubjects = await createSubjects(SUBJECTS, admin ? admin._id : null);
-  const createdStudents = await createStudents(COUNT, admin ? admin._id : null);
-  await createAttendance(createdStudents, createdSubjects, admin ? admin._id : null, 3);
+  // Seed accounts first
+  await seedAccounts();
 
-  logger.info('Seeding finished');
-  try {
-    await mongoose.connection.close();
-  } catch (err) {
-    logger.warn('Error closing DB connection', err);
+  // Get admin user for createdBy references
+  const admin = await User.findOne({ email: 'admin@notified.com' });
+  if (!admin) {
+    console.error('❌ Admin user not found. Cannot seed sample data.');
+    process.exit(1);
   }
+
+  // Seed sample data
+  const subjects = await seedSubjects(admin._id);
+  const students = await seedStudents(admin._id);
+  await seedEnrollments(students, subjects, admin._id);
+  await seedAttendance(students, subjects, admin._id);
+
+  console.log('\n✅ Database seeding complete!');
+  console.log('\n📝 Demo account credentials:');
+  demoUsers.forEach((u) => {
+    console.log(`   ${u.role.padEnd(12)} - ${u.email} / ${u.password}`);
+  });
+
+  rl.close();
+  await mongoose.connection.close();
   process.exit(0);
-};
+}
 
 main().catch(async (err) => {
-  logger.error('Seeding failed:', err);
-  try {
-    await mongoose.connection.close();
-  } catch (err2) {}
+  console.error('❌ Seeding failed:', err);
+  rl.close();
+  await mongoose.connection.close();
   process.exit(1);
 });
