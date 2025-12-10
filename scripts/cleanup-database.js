@@ -9,6 +9,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const logger = require('../src/utils/logger');
+const { Student, Subject, Record, User, Enrollment, Attendance } = require('../src/models');
 
 // Connect to database
 const connectDB = async () => {
@@ -26,8 +27,6 @@ const connectDB = async () => {
 const cleanupOrphanedStudents = async () => {
   try {
     console.log('\n🔍 Checking for orphaned student records...');
-
-    const Student = mongoose.model('Student');
 
     // Find students with soft delete flags
     const softDeleted = await Student.find({
@@ -68,9 +67,6 @@ const cleanupOrphanedRecords = async () => {
   try {
     console.log('\n🔍 Checking for orphaned activity records...');
 
-    const Record = mongoose.model('Record');
-    const Student = mongoose.model('Student');
-
     // Get all valid student IDs
     const validStudentIds = (await Student.find({}, { _id: 1 })).map((s) => s._id.toString());
 
@@ -86,12 +82,9 @@ const cleanupOrphanedRecords = async () => {
     console.log(`Found ${invalidRecords.length} orphaned activity records`);
 
     if (invalidRecords.length > 0) {
-      // Option: Remove orphaned records
-      // Uncomment to delete
-      // const result = await Record.deleteMany({ _id: { $in: invalidRecords.map(r => r._id) } });
-      // console.log(`✅ Removed ${result.deletedCount} orphaned activity records`);
-
-      console.log('⚠️  To remove these records, uncomment the deletion code in the script');
+      // Remove orphaned records
+      const result = await Record.deleteMany({ _id: { $in: invalidRecords.map(r => r._id) } });
+      console.log(`✅ Removed ${result.deletedCount} orphaned activity records`);
     } else {
       console.log('✅ No orphaned activity records found');
     }
@@ -106,8 +99,6 @@ const cleanupOrphanedRecords = async () => {
 const checkDataIntegrity = async () => {
   try {
     console.log('\n🔍 Checking data integrity...');
-
-    const Student = mongoose.model('Student');
 
     // Check for duplicate student numbers
     const duplicates = await Student.aggregate([
@@ -147,30 +138,29 @@ const checkDataIntegrity = async () => {
   }
 };
 
-const reindexCollections = async () => {
+const displayCollectionInfo = async () => {
   try {
-    console.log('\n🔍 Reindexing collections...');
+    console.log('\n🔍 Checking collections...');
 
-    const collections = ['students', 'subjects', 'records', 'users'];
+    const collections = ['students', 'subjects', 'records', 'users', 'enrollments', 'attendances'];
 
     for (const collectionName of collections) {
-      const collection = mongoose.connection.collection(collectionName);
-      await collection.reIndex();
-      console.log(`✅ Reindexed ${collectionName} collection`);
+      try {
+        const collection = mongoose.connection.collection(collectionName);
+        const count = await collection.countDocuments();
+        console.log(`  ${collectionName}: ${count} documents`);
+      } catch (err) {
+        console.log(`  ${collectionName}: (not found)`);
+      }
     }
   } catch (error) {
-    console.error('❌ Error reindexing collections:', error.message);
+    console.error('❌ Error checking collections:', error.message);
   }
 };
 
 const displayStats = async () => {
   try {
     console.log('\n📊 Database Statistics:');
-
-    const Student = mongoose.model('Student');
-    const Subject = mongoose.model('Subject');
-    const Record = mongoose.model('Record');
-    const User = mongoose.model('User');
 
     const stats = {
       students: await Student.countDocuments(),
@@ -201,7 +191,7 @@ const main = async () => {
   await cleanupOrphanedStudents();
   await cleanupOrphanedRecords();
   await checkDataIntegrity();
-  await reindexCollections();
+  await displayCollectionInfo();
 
   // Display final stats
   await displayStats();
