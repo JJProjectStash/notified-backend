@@ -55,6 +55,18 @@ async function seed() {
       password: 'Staff123!',
       role: ROLES.STAFF,
     },
+    {
+      name: 'Demo Professor',
+      email: 'professor@notified.com',
+      password: 'Professor123!',
+      role: ROLES.PROFESSOR,
+    },
+    {
+      name: 'Demo Registrar',
+      email: 'registrar@notified.com',
+      password: 'Registrar123!',
+      role: ROLES.REGISTRAR,
+    },
   ];
 
   for (const u of demoUsers) {

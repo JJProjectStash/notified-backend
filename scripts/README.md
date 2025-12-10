@@ -1,56 +1,40 @@
 # Scripts
 
-This directory contains helper scripts for database and system maintenance. Use with caution — many scripts perform data modifications.
+This directory contains utility scripts for database management and seeding.
 
-## reset-db-contents.js
+## Available Scripts
 
-Usage:
-
+### Seed Demo Accounts
 ```bash
-node scripts/reset-db-contents.js [--dry-run] [--force] [--exclude=users,sessions] [--include=students,attendance] [--uri=mongodb://localhost:27017/db]
+npm run seed:accounts
 ```
+Creates demo user accounts for all roles:
+- **superadmin@notified.com** - SuperAdmin123! (Full system access)
+- **admin@notified.com** - Admin123! (Admin panel access)
+- **staff@notified.com** - Staff123! (Staff operations)
+- **professor@notified.com** - Professor123! (View/mark attendance)
+- **registrar@notified.com** - Registrar123! (Student/subject management)
 
-- `--dry-run` (or `-d`) only shows document counts per collection; no deletions will be performed.
-- `--force` (or `-f`) bypasses interactive confirmation prompt and proceeds.
-- `--exclude` comma-separated collection list to skip during the sweep. Default exclusions include `users`, `roles`, `migrations`, and `sessions`.
-- `--include` comma-separated collection list to explicitly sweep only those collections (overrides exclude).
-- `--uri` explicit MongoDB connection string (falls back to `MONGODB_URI` in `.env`).
-
-This script will call `deleteMany({})` on each selected collection to remove all documents, preserving collection structures and indexes.
-
-**Safety Notes**:
-- This script is destructive — ensure backups exist (mongodump) before running in non-test environments.
-- Avoid running this in production unless intended. Use `--include` to explicitly target dev collections.
-
-## seed-sample-data.js
-
-Usage:
-
+### Seed Sample Data
 ```bash
-node scripts/seed-sample-data.js [--count=10] [--subjects=3] [--dry-run] [--wipe] [--force]
+npm run seed:data
 ```
+Creates sample students, subjects, and attendance records for development.
 
-Defaults: creates 10 students and 3 subjects and 3 days of attendance records.
+**Options:**
+- `--wipe` - Remove existing sample data first
+- `--force` - Skip confirmation prompts
+- `--count=N` - Number of students to create (default: 10)
+- `--subjects=N` - Number of subjects to create (default: 3)
+- `--dry-run` - Preview changes without making them
 
-- `--count` number of students to create (default 10)
-- `--subjects` number of subjects to create (default 3)
-- `--dry-run` log planned operations instead of performing them
-- `--wipe` delete sample documents (students, subjects, attendance, enrollments) before seeding
-- `--force` skip confirmation prompts
-
-**Note**: The script uses the default admin credentials from `.env` if present, otherwise creates an admin user using defaults in `.env`.
-
-## cleanup-db.js
-
-Usage:
-
+### Database Cleanup
 ```bash
-node scripts/cleanup-db.js [--dry-run] [--force] [--include=students,attendance] [--exclude=users] [--preserve-admins]
+npm run db:cleanup
 ```
-
-- `--dry-run`: show collection counts only
-- `--force`: skip interactive confirmation
-- `--include`: only operate on specified collections (comma-separated)
-- `--exclude`: skip specified collections (comma-separated)
-- `--preserve-admins`: when removing documents from `users` collection, keep documents with role `admin` or `superadmin`
-
+Cleans up orphaned records and checks data integrity:
+- Finds and optionally removes orphaned student records
+- Checks for orphaned activity records
+- Verifies data integrity (duplicates, missing fields)
+- Reindexes collections
+- Displays database statistics

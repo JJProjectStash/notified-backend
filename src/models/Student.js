@@ -61,6 +61,11 @@ const studentSchema = new mongoose.Schema(
         'Please provide a valid guardian email address',
       ],
     },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'graduated', 'transferred', 'suspended', 'dropped'],
+      default: 'active',
+    },
     isActive: {
       type: Boolean,
       default: true,

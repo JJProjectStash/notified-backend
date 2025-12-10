@@ -7,7 +7,7 @@
  * @version 1.0.0
  */
 
-const { Student, Record } = require('../models');
+const { Student, Record, Enrollment, Attendance } = require('../models');
 const ValidationUtil = require('../utils/validationUtil');
 const logger = require('../utils/logger');
 const {
@@ -22,7 +22,10 @@ class StudentService {
    * Get all students with pagination
    */
   async getAllStudents(page = 1, limit = 10, filters = {}) {
-    const query = { ...filters };
+    const query = {};
+    if (filters.section) query.section = filters.section;
+    if (filters.status) query.status = filters.status;
+    if (filters.isActive !== undefined) query.isActive = filters.isActive;
 
     const students = await Student.find(query)
       .sort({ studentNumber: 1 })
@@ -148,7 +151,8 @@ class StudentService {
   }
 
   /**
-   * Delete student (hard delete)
+   * Delete student (hard delete with cascade)
+   * Also removes all related enrollment and attendance records
    */
   async deleteStudent(studentId, userId) {
     const student = await Student.findById(studentId);
@@ -157,11 +161,19 @@ class StudentService {
       throw new Error(ERROR_MESSAGES.STUDENT_NOT_FOUND);
     }
 
+    // Cascade delete: Remove all enrollment records for this student
+    const enrollmentResult = await Enrollment.deleteMany({ student: studentId });
+    logger.info(`Deleted ${enrollmentResult.deletedCount} enrollments for student ${studentId}`);
+
+    // Cascade delete: Remove all attendance records for this student
+    const attendanceResult = await Attendance.deleteMany({ student: studentId });
+    logger.info(`Deleted ${attendanceResult.deletedCount} attendance records for student ${studentId}`);
+
     // Create record before deletion
     await Record.createStudentRecord(
       student._id,
       RECORD_TYPES.STUDENT_DELETED,
-      `Student deleted: ${student.firstName} ${student.lastName} (${student.studentNumber})`,
+      `Student deleted: ${student.firstName} ${student.lastName} (${student.studentNumber}). Cascade deleted ${enrollmentResult.deletedCount} enrollments and ${attendanceResult.deletedCount} attendance records.`,
       userId
     );
 
@@ -170,7 +182,11 @@ class StudentService {
 
     logger.info(`Student deleted: ${student.studentNumber}`);
 
-    return { message: SUCCESS_MESSAGES.STUDENT_DELETED };
+    return {
+      message: SUCCESS_MESSAGES.STUDENT_DELETED,
+      deletedEnrollments: enrollmentResult.deletedCount,
+      deletedAttendance: attendanceResult.deletedCount,
+    };
   }
 
   /**

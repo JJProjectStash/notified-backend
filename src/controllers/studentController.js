@@ -17,13 +17,15 @@ const { SUCCESS_MESSAGES } = require('../config/constants');
  * @access  Private
  */
 const getAllStudents = asyncHandler(async (req, res) => {
-  const { page, limit, section, search } = req.query;
+  const { page, limit, section, search, status } = req.query;
 
   let result;
   if (search) {
     result = await studentService.searchStudents(search, parseInt(page), parseInt(limit));
   } else {
-    const filters = section ? { section } : {};
+    const filters = {};
+    if (section) filters.section = section;
+    if (status) filters.status = status;
     result = await studentService.getAllStudents(
       parseInt(page) || 1,
       parseInt(limit) || 10,

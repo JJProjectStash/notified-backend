@@ -12,6 +12,8 @@ module.exports = {
     SUPERADMIN: 'superadmin',
     ADMIN: 'admin',
     STAFF: 'staff',
+    PROFESSOR: 'professor',
+    REGISTRAR: 'registrar',
   },
 
   // Record Types (matching Java application)
