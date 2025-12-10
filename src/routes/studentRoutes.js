@@ -43,6 +43,7 @@ router.get('/', getAllStudents);
 router.get('/generate/student-number', generateStudentNumber);
 router.get('/number/:studentNumber', getStudentByNumber);
 router.get('/:studentId/enrollments', enrollmentController.getStudentEnrollments);
+router.get('/:studentId/attendance/summary', studentController.getStudentAttendanceSummary);
 router.get('/:id', getStudentById);
 router.post('/', requireStaff, studentValidation, validate, createStudent);
 router.put('/:id', requireStaff, updateStudent);

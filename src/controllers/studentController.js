@@ -104,6 +104,17 @@ const generateStudentNumber = asyncHandler(async (req, res) => {
   ApiResponse.success(res, { studentNumber }, 'Student number generated successfully');
 });
 
+/**
+ * @route   GET /api/v1/students/:studentId/attendance/summary
+ * @desc    Get attendance summary for a student
+ * @access  Private
+ */
+const getStudentAttendanceSummary = asyncHandler(async (req, res) => {
+  const { studentId } = req.params;
+  const summary = await studentService.getStudentAttendanceSummary(studentId);
+  ApiResponse.success(res, summary, 'Attendance summary retrieved successfully');
+});
+
 module.exports = {
   getAllStudents,
   getStudentById,
@@ -112,4 +123,5 @@ module.exports = {
   updateStudent,
   deleteStudent,
   generateStudentNumber,
+  getStudentAttendanceSummary,
 };

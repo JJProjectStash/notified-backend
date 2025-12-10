@@ -226,6 +226,102 @@ class StudentService {
 
     return { students, total, page, limit };
   }
+
+  /**
+   * Get attendance summary for a student
+   * @param {String} studentId - Student ID
+   * @returns {Promise<Object>} Attendance summary with per-subject breakdown
+   */
+  async getStudentAttendanceSummary(studentId) {
+    const student = await Student.findById(studentId);
+    if (!student) {
+      throw new Error(ERROR_MESSAGES.STUDENT_NOT_FOUND);
+    }
+
+    // Get overall attendance stats
+    const overallStats = await Attendance.aggregate([
+      { $match: { student: student._id } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Calculate overall summary
+    const summary = {
+      totalDays: 0,
+      present: 0,
+      absent: 0,
+      late: 0,
+      excused: 0,
+      attendanceRate: 0,
+      bySubject: [],
+    };
+
+    overallStats.forEach((stat) => {
+      summary[stat._id] = stat.count;
+      summary.totalDays += stat.count;
+    });
+
+    // Calculate attendance rate
+    if (summary.totalDays > 0) {
+      summary.attendanceRate = Math.round(
+        ((summary.present + summary.late) / summary.totalDays) * 100
+      );
+    }
+
+    // Get per-subject breakdown
+    const subjectStats = await Attendance.aggregate([
+      { $match: { student: student._id, subject: { $exists: true, $ne: null } } },
+      {
+        $group: {
+          _id: { subject: '$subject', status: '$status' },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.subject',
+          stats: {
+            $push: { status: '$_id.status', count: '$count' },
+          },
+          total: { $sum: '$count' },
+        },
+      },
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'subject',
+        },
+      },
+      { $unwind: '$subject' },
+    ]);
+
+    summary.bySubject = subjectStats.map((s) => {
+      const stats = { present: 0, absent: 0, late: 0, excused: 0 };
+      s.stats.forEach((st) => {
+        stats[st.status] = st.count;
+      });
+      const rate = s.total > 0 ? Math.round(((stats.present + stats.late) / s.total) * 100) : 0;
+
+      return {
+        subjectId: s._id.toString(),
+        subjectCode: s.subject.subjectCode,
+        subjectName: s.subject.subjectName,
+        present: stats.present,
+        absent: stats.absent,
+        late: stats.late,
+        excused: stats.excused,
+        attendanceRate: rate,
+      };
+    });
+
+    return summary;
+  }
 }
 
 module.exports = new StudentService();
